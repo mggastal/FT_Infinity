@@ -187,6 +187,8 @@ body{background:var(--bg);color:var(--text);font-family:'DM Sans',sans-serif;fon
 .seg-chart-card{background:var(--surface);border:1px solid var(--border);border-radius:var(--r);box-shadow:var(--sh);padding:12px 12px 10px;}
 .seg-chart-wrap{position:relative;width:100%;height:170px;margin-bottom:8px;}
 .seg-empty{padding:20px 8px;font-size:11px;color:var(--muted);text-align:center;}
+.ov-mid{display:grid;grid-template-columns:4fr 1fr;gap:12px;}
+@media(max-width:900px){.ov-mid{grid-template-columns:1fr;}}
 .utm-grid{display:grid;grid-template-columns:repeat(2,1fr);gap:12px;}
 @media(max-width:640px){.utm-grid{grid-template-columns:1fr;}}
 .utm-table{border:1px solid var(--border);border-radius:10px;overflow:hidden;background:var(--surface);}
@@ -319,20 +321,21 @@ body{background:var(--bg);color:var(--text);font-family:'DM Sans',sans-serif;fon
     <div class="page-section active" id="page-overview">
       <div class="krow k5 mb14" id="ovKpis"></div>
       <div class="funnel-card"><div class="funnel-title" id="funnelTitle">Funil de Conversão</div><div class="funnel-steps" id="funnelSteps"></div></div>
-      <!-- Gráfico diário largura total -->
-      <div class="cc mb14">
-        <div class="cc-t"><span id="ttlVendasDiarias">Vendas Diárias (Eduzz) & Investimento</span>
-          <span class="gran-pills"><button class="gp active" data-g="dia" onclick="setOvGran('dia',this)">Diário</button><button class="gp" data-g="sem" onclick="setOvGran('sem',this)">Semanal</button><button class="gp" data-g="mes" onclick="setOvGran('mes',this)">Mensal</button></span></div>
-        <div class="cc-s">Vendas (barras laranja) · Invest. Meta (linha verde) · CPV (linha preta)</div>
-        <div class="cw" style="height:230px"><canvas id="chOvMain"></canvas></div>
-      </div>
-      <!-- Origem (30%) + Produto (70%) -->
-      <div class="ov-bottom" id="ovBottom" style="display:grid;grid-template-columns:3fr 7fr;gap:12px;margin-bottom:14px;">
-        <div class="cc" id="cardOrigem">
-          <div class="cc-t">Vendas por Origem · Last Click</div>
-          <div class="cc-s">Tráfego Pago vs Orgânico · último clique antes da compra</div>
-          <div class="cw" style="height:180px"><canvas id="chOvOrigem"></canvas></div>
+      <!-- Diário (≈80%) + Origem (≈20%) lado a lado -->
+      <div class="ov-mid mb14" id="ovMid">
+        <div class="cc">
+          <div class="cc-t"><span id="ttlVendasDiarias">Vendas Diárias (Eduzz) & Investimento</span>
+            <span class="gran-pills"><button class="gp active" data-g="dia" onclick="setOvGran('dia',this)">Diário</button><button class="gp" data-g="sem" onclick="setOvGran('sem',this)">Semanal</button><button class="gp" data-g="mes" onclick="setOvGran('mes',this)">Mensal</button></span></div>
+          <div class="cc-s">Vendas (barras laranja) · Invest. Meta (linha verde) · CPV (linha preta)</div>
+          <div class="cw" style="height:230px"><canvas id="chOvMain"></canvas></div>
         </div>
+        <div class="cc" id="cardOrigem">
+          <div class="cc-t" style="font-size:11px">Vendas por Origem · Last Click</div>
+          <div class="cw" style="height:220px"><canvas id="chOvOrigem"></canvas></div>
+        </div>
+      </div>
+      <!-- Tabelas com a largura toda -->
+      <div class="ov-bottom" id="ovBottom" style="display:grid;grid-template-columns:1fr;gap:12px;margin-bottom:14px;">
         <div class="cc" id="cardProduto">
           <div class="cc-t" id="ccProdutoTitle">Vendas por Produto</div>
           <div class="cc-s" id="ccProdutoSub">por origem</div>
@@ -1029,7 +1032,7 @@ function renderOverview(){
     // Pago vs Orgânico (oculto se USAR_ORIGEM=false — ex: UTMs ainda não confiáveis)
     if(!USAR_ORIGEM){
       const co=document.getElementById('cardOrigem'); if(co) co.style.display='none';
-      const ob=document.getElementById('ovBottom'); if(ob) ob.style.gridTemplateColumns='1fr';
+      const om=document.getElementById('ovMid'); if(om) om.style.gridTemplateColumns='1fr';
     }
     const pagoCnt=rawF.filter(r=>r.t&&r.t.includes('Pago')).length;
     const orgCnt =rawF.filter(r=>r.t&&r.t.includes('rgân')).length;
