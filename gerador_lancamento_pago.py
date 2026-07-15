@@ -29,6 +29,8 @@ SCK_SRC_PAGO     = ["fb","facebook","ig","instagram"]   # sources considerados t
 VALOR_FIXO       = 10
 MOEDA_SIMBOLO    = "$"             # símbolo exibido no dashboard (ex: "$", "US$", "R$")
 FONTE_LABEL      = "Hotmart"       # rótulo sob o KPI de Vendas
+USAR_IDIOMAS     = True            # True = botão PT/ES na topbar traduz o relatório
+IDIOMA_PADRAO    = "es"            # idioma inicial do relatório: "es" ou "pt"
 # Vendas extras (fora do relatório) — injetadas manualmente. Cada uma conta VALOR_FIXO.
 # Formato: {"data":"dd/mm/aaaa","qtd":N}. [] = nenhuma.
 VENDAS_EXTRAS    = [{"data":"12/07/2026","qtd":33}]
@@ -42,18 +44,18 @@ ROAS_MEDIO       = 0.6
 
 # Metas do funil — define cores (verde/amarelo/vermelho) nas taxas
 # Cada métrica: [valor_bom, valor_medio] — acima do bom = verde, entre = amarelo, abaixo = vermelho
-CTR_BOM          = 1.0    # CTR ≥ 1.2% → verde | 0.8-1.2% → amarelo | <0.8% → vermelho
+CTR_BOM          = 1.0    # CTR ≥ 1.0% → verde | 0.8-1.0% → amarelo | <0.8% → vermelho
 CTR_MEDIO        = 0.8
-CR_BOM           = 71.0   # Connect Rate ≥ 75% → verde | 63-75% → amarelo | <63% → vermelho
+CR_BOM           = 71.0   # Connect Rate ≥ 71% → verde | 63-71% → amarelo | <63% → vermelho
 CR_MEDIO         = 63.0
-TX_IC_BOM        = 15.0   # Tx Init Checkout ≥ 20% → verde | 15-20% → amarelo | <15% → vermelho
+TX_IC_BOM        = 15.0   # Tx Init Checkout ≥ 15% → verde | 12-15% → amarelo | <12% → vermelho
 TX_IC_MEDIO      = 12.0
-TX_CK_BOM        = 25.0   # Taxa Checkout ≥ 32% → verde | 23-32% → amarelo | <23% → vermelho
+TX_CK_BOM        = 25.0   # Taxa Checkout ≥ 25% → verde | 20-25% → amarelo | <20% → vermelho
 TX_CK_MEDIO      = 20.0
-TX_CONV_BOM      = 7.0    # Taxa Conversão LP ≥ 8% → verde | 6-8% → amarelo | <5% → vermelho
+TX_CONV_BOM      = 7.0    # Taxa Conversão LP ≥ 7% → verde | 5-7% → amarelo | <5% → vermelho
 TX_CONV_MEDIO    = 5.0
 
-CPM_BOM          = 7.0    # CPM ≤ 5 → verde | 5-10 → amarelo | >10 → vermelho (menor = melhor)
+CPM_BOM          = 7.0    # CPM ≤ 7 → verde | 7-12 → amarelo | >12 → vermelho (menor = melhor)
 CPM_MEDIO        = 12.0
 
 # ══════════════════════════════════════════════════════
@@ -525,11 +527,21 @@ def pesquisa_process(df, hot_qtd):
     SKIP_COLS=set(UTM_COLS+["Carimbo de data/hora","Timestamp","Email","email",
                              "Nome","nome","ID","id","Unnamed: 0"])
     # Considerar como pergunta qualquer coluna com texto longo (provável questão)
+    def _pergunta_valida(c):
+        s=df[c]; nn=s.notna().sum(); nu=s.nunique()
+        if nu>50: return False                        # muitos valores distintos → não é múltipla escolha
+        if nn>=5 and nu/max(nn,1)>=0.8: return False  # respostas quase todas diferentes (nome, email, whatsapp...) → lixo visual
+        vals=s.dropna().astype(str)
+        if nn>0:
+            # padrão e-mail ou telefone na maioria das respostas → dado pessoal, não pergunta
+            if (vals.str.contains(r"@.+\.",regex=True).mean()>0.5): return False
+            if (vals.str.replace(r"[\s\-\(\)\+]","",regex=True).str.fullmatch(r"\d{8,14}").mean()>0.5): return False
+        return True
     PERGUNTAS=[c for c in df.columns
                if c not in SKIP_COLS
                and not c.lower().startswith("unnamed")
                and pd.api.types.is_string_dtype(df[c])  # aceita str e object
-               and df[c].nunique() <= 50] # não é ID único por linha
+               and _pergunta_valida(c)]
     graficos=[]
     for p in PERGUNTAS:
         if p not in df.columns: continue
@@ -586,6 +598,8 @@ def inject_all(tpl, meta_k, meta_d, meta_dc, meta_raw_c, meta_t, meta_bd, hot_k,
                 ("FUNIL_TITULO",f"'{FUNIL_TITULO}'"),
                 ("FUNIL_COMPRAS_PAGO","true" if FUNIL_COMPRAS_PAGO else "false"),
                 ("FONTE_LABEL",f"'{FONTE_LABEL}'"),
+                ("USAR_IDIOMAS","true" if USAR_IDIOMAS else "false"),
+                ("LANG_DEFAULT",f"'{IDIOMA_PADRAO}'"),
                 ("LOGO_LETRA",f"'{LOGO_LETRA}'"),("COR_ACENTO",f"'{COR_ACENTO}'"),
                 ("CPA_BOM",str(CPA_BOM)),("CPA_MEDIO",str(CPA_MEDIO)),
                 ("ROAS_BOM",str(ROAS_BOM)),("ROAS_MEDIO",str(ROAS_MEDIO)),
