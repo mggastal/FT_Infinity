@@ -187,7 +187,8 @@ body{background:var(--bg);color:var(--text);font-family:'DM Sans',sans-serif;fon
 .seg-chart-card{background:var(--surface);border:1px solid var(--border);border-radius:var(--r);box-shadow:var(--sh);padding:12px 12px 10px;}
 .seg-chart-wrap{position:relative;width:100%;height:170px;margin-bottom:8px;}
 .seg-empty{padding:20px 8px;font-size:11px;color:var(--muted);text-align:center;}
-.utm-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:12px;}
+.utm-grid{display:grid;grid-template-columns:repeat(2,1fr);gap:12px;}
+@media(max-width:640px){.utm-grid{grid-template-columns:1fr;}}
 .utm-table{border:1px solid var(--border);border-radius:10px;overflow:hidden;background:var(--surface);}
 .utm-table-ttl{font-family:'DM Mono',monospace;font-size:11px;font-weight:700;color:var(--text);padding:7px 10px;background:var(--surface2);border-bottom:1px solid var(--border);}
 .seg-tbl table{width:100%;border-collapse:collapse;}
@@ -305,6 +306,7 @@ body{background:var(--bg);color:var(--text);font-family:'DM Sans',sans-serif;fon
         <button class="pb active" id="btnLctOn" onclick="setLct(true,this)">VSE02</button>
         <button class="pb" id="btnLctOff" onclick="setLct(false,this)">Tudo</button>
       </div>
+      <div class="label-toggle" id="langToggle" onclick="toggleLang()" title="Idioma" style="display:none">ES</div>
       <div class="label-toggle on" id="labelToggle" onclick="toggleLabels(this)" title="Rótulos de dados">Rótulos</div>
       <button class="theme-btn" onclick="toggleTheme()"><span id="themeIcon">🌙</span><span id="themeLabel">Escuro</span></button>
     </div>
@@ -318,7 +320,7 @@ body{background:var(--bg);color:var(--text);font-family:'DM Sans',sans-serif;fon
       <div class="funnel-card"><div class="funnel-title" id="funnelTitle">Funil de Conversão</div><div class="funnel-steps" id="funnelSteps"></div></div>
       <!-- Gráfico diário largura total -->
       <div class="cc mb14">
-        <div class="cc-t">Vendas Diárias (Eduzz) & Investimento
+        <div class="cc-t"><span id="ttlVendasDiarias">Vendas Diárias (Eduzz) & Investimento</span>
           <span class="gran-pills"><button class="gp active" data-g="dia" onclick="setOvGran('dia',this)">Diário</button><button class="gp" data-g="sem" onclick="setOvGran('sem',this)">Semanal</button><button class="gp" data-g="mes" onclick="setOvGran('mes',this)">Mensal</button></span></div>
         <div class="cc-s">Vendas (barras laranja) · Invest. Meta (linha verde) · CPV (linha preta)</div>
         <div class="cw" style="height:230px"><canvas id="chOvMain"></canvas></div>
@@ -446,6 +448,91 @@ const MOEDA='R$';
 const FONTE_LABEL='Eduzz';
 const FUNIL_TITULO='Funil de Conversão';
 const FUNIL_COMPRAS_PAGO=false;
+const USAR_IDIOMAS=false;
+const LANG_DEFAULT='pt';
+// ═══ i18n PT/ES ═══
+let LANG=(function(){try{return localStorage.getItem('dashLang')||LANG_DEFAULT;}catch(e){return LANG_DEFAULT;}})();
+const I18N={
+  // Menu / topbar
+  'Métricas Diárias':'Métricas Diarias','Pesquisa':'Encuesta','Lançamento':'Lanzamiento',
+  'Ontem':'Ayer','Tudo':'Todo','Rótulos':'Etiquetas','Escuro':'Oscuro','Claro':'Claro',
+  // KPIs
+  'Investimento':'Inversión','Faturamento':'Facturación','Vendas':'Ventas','Compras':'Compras',
+  'Ticket Médio':'Ticket Promedio','Custo por venda':'Costo por venta','produto filtrado':'producto filtrado',
+  // Funil
+  'Análise do Funil Pago (Meta Ads)':'Análisis del Embudo Pago (Meta Ads)',
+  'Funil de Conversão':'Embudo de Conversión',
+  'Impressões':'Impresiones','Taxa Checkout':'Tasa Checkout','Tx. Init Checkout':'Tx. Init Checkout',
+  'Taxa de Conversão (PV→Compra)':'Tasa de Conversión (PV→Compra)',
+  // Gráficos
+  'Vendas · Investimento · CPA':'Ventas · Inversión · CPA',
+  'Vendas (barras laranja) · Invest. Meta (linha verde) · CPV (linha preta)':'Ventas (barras naranjas) · Invers. Meta (línea verde) · CPV (línea negra)',
+  'Vendas Meta (barras azuis) · Invest. (linha verde) · CPA (linha preta tracejada)':'Ventas Meta (barras azules) · Invers. (línea verde) · CPA (línea negra punteada)',
+  'Invest.':'Invers.','CPV':'CPV','CPA':'CPA','Vendas Diárias':'Ventas Diarias',
+  // Seções / tabelas
+  'Campanhas':'Campañas','Campanha':'Campaña','Segmentação':'Segmentación',
+  'Compras por segmento · investimento e CPA no tooltip · respeita filtro de campanha e período':'Compras por segmento · inversión y CPA en el tooltip · respeta filtro de campaña y período',
+  'Gênero':'Género','Faixa Etária':'Rango de Edad','Posicionamento':'Ubicación','Anúncios':'Anuncios','Anúncio':'Anuncio',
+  'CAMPANHA':'CAMPAÑA','CLIQUES':'CLICS','RECEITA*':'INGRESOS*','TOTAL':'TOTAL','Conjunto':'Conjunto',
+  'Faturamento':'Facturación','Fat.':'Fact.','Valor':'Valor',
+  'Sem vendas no período':'Sin ventas en el período','Sem dados no período':'Sin datos en el período','Sem dados':'Sin datos',
+  '* Receita e ROAS: Action Value Omni Purchase do Meta (atribuição)':'* Ingresos y ROAS: Action Value Omni Purchase de Meta (atribución)',
+  // Diário / filtros
+  'Diário':'Diario','Semanal':'Semanal','Mensal':'Mensual',
+  'Campanhas ▾':'Campañas ▾','Todas as campanhas':'Todas las campañas',
+  'Buscar campanha...':'Buscar campaña...','Limpar':'Limpiar',
+  'Filtro ativo · Faturamento, ROAS, Vendas e CPA seguem globais':'Filtro activo · Facturación, ROAS, Ventas y CPA siguen globales',
+  // SCK / UTM
+  'Vendas por SCK':'Ventas por SCK','Vendas por Produto':'Ventas por Producto',
+  'Vendas por Origem · Last Click':'Ventas por Origen · Last Click',
+  'Tráfego Pago vs Orgânico · último clique antes da compra':'Tráfico Pago vs Orgánico · último clic antes de la compra',
+  'Tráfego Pago':'Tráfico Pago','Orgânico':'Orgánico','Direto':'Directo',
+  '(vazio / fora do relatório)':'(vacío / fuera del informe)','Fora do relatório':'Fuera del informe',
+  'Direto / Não rastreado':'Directo / No rastreado','período total':'período total',
+  'Filtrar respostas por origem':'Filtrar respuestas por origen',
+};
+const I18N_RX=[
+  [/^Dados até (.+)$/,'Datos hasta $1'],
+  [/^Atualizado (.+)$/,'Actualizado $1'],
+  [/^por parâmetro UTM · (.+)$/,'por parámetro UTM · $1'],
+  [/^Vendas Diárias \((.+)\) & Investimento$/,'Ventas Diarias ($1) & Inversión'],
+  [/^Vendas (\S+)$/,'Ventas $1'],
+  [/^(.+) \/ Invest\.$/,'$1 / Invers.'],
+  [/^Invest\. \/ vendas (.+)$/,'Invers. / ventas $1'],
+];
+function esOf(t){
+  if(I18N[t]!==undefined) return I18N[t];
+  for(const [re,rep] of I18N_RX){ if(re.test(t)) return t.replace(re,rep); }
+  return null;
+}
+function t(s){ return (LANG==='es' && esOf(s)) || s; }
+function translateAll(){
+  const es=LANG==='es';
+  const w=document.createTreeWalker(document.body,NodeFilter.SHOW_TEXT);
+  let n;
+  while(n=w.nextNode()){
+    const raw=n.nodeValue, tt=raw.trim(); if(!tt) continue;
+    if(es){ const tr=esOf(tt); if(tr!=null){ if(n.__pt===undefined) n.__pt=raw; n.nodeValue=raw.replace(tt,tr); } }
+    else if(n.__pt!==undefined){ n.nodeValue=n.__pt; delete n.__pt; }
+  }
+  document.querySelectorAll('input[placeholder]').forEach(i=>{
+    if(es){ const tr=esOf(i.placeholder.trim()); if(tr){ if(!i.dataset.pt) i.dataset.pt=i.placeholder; i.placeholder=tr; } }
+    else if(i.dataset.pt){ i.placeholder=i.dataset.pt; delete i.dataset.pt; }
+  });
+  const b=document.getElementById('langToggle'); if(b) b.textContent=es?'PT':'ES';
+}
+function toggleLang(){
+  LANG=LANG==='es'?'pt':'es';
+  try{localStorage.setItem('dashLang',LANG);}catch(e){}
+  // Recarregar renders (gráficos canvas pegam labels traduzidos via t())
+  try{if(typeof renderOverview==='function')renderOverview();}catch(e){}
+  try{if(typeof renderMeta==='function')renderMeta();}catch(e){}
+  try{if(typeof renderDiario==='function')renderDiario();}catch(e){}
+  translateAll();
+}
+let _i18nT=null;
+new MutationObserver(()=>{ if(LANG!=='es') return; clearTimeout(_i18nT); _i18nT=setTimeout(translateAll,80); }).observe(document.body,{childList:true,subtree:true});
+
 // Aplica flags de branding (logo.png / rodapé)
 (function(){
   if(!USAR_LOGO){
@@ -455,6 +542,8 @@ const FUNIL_COMPRAS_PAGO=false;
   }
   if(!USAR_RODAPE){ var f=document.getElementById('pageFooter'); if(f) f.remove(); }
   var ft=document.getElementById('funnelTitle'); if(ft&&typeof FUNIL_TITULO!=='undefined') ft.textContent=FUNIL_TITULO;
+  var tv=document.getElementById('ttlVendasDiarias'); if(tv) tv.textContent='Vendas Diárias ('+FONTE_LABEL+') & Investimento';
+  var lt=document.getElementById('langToggle'); if(lt&&typeof USAR_IDIOMAS!=='undefined'&&USAR_IDIOMAS){ lt.style.display='inline-flex'; if(LANG==='es') setTimeout(translateAll,350); }
 })();
 const NOME_CLIENTE='Cliente';
 const LOGO_LETRA='C';
@@ -548,7 +637,7 @@ function metaCampApply(){
   btn.classList.toggle('on',n>0);
   const chip=document.getElementById('metaCampChip');
   chip.style.display=n>0?'inline-block':'none';
-  chip.textContent=n>0?'Filtro ativo · métricas Eduzz seguem globais':'';
+  chip.textContent=n>0?'Filtro ativo · Faturamento, ROAS, Vendas e CPA seguem globais':'';
   renderMetaCampList();
   renderMeta();
 }
@@ -806,18 +895,18 @@ function renderOverview(){
   const cpaGeral=spendF>0&&hotQtdF>0?r2(spendF/hotQtdF):null;
   document.getElementById('ovKpis').innerHTML=`
     <div class="kpi" style="--kc:#334155"><div class="kpi-lbl">Investimento</div><div class="kpi-val" style="font-size:16px;color:var(--text)">${fR(spendF)}</div><div class="kpi-sub">Meta Ads</div></div>
-    <div class="kpi" style="--kc:#059669"><div class="kpi-lbl">Faturamento</div><div class="kpi-val" style="font-size:16px;color:#059669">${fR(hotValF)}</div><div class="kpi-sub">Eduzz</div></div>
+    <div class="kpi" style="--kc:#059669"><div class="kpi-lbl">Faturamento</div><div class="kpi-val" style="font-size:16px;color:#059669">${fR(hotValF)}</div><div class="kpi-sub">${FONTE_LABEL}</div></div>
     <div class="kpi" style="--kc:${roasCls(roasF)==='cg'?'#059669':roasCls(roasF)==='cw2'?'#d97706':'#dc2626'}">
       <div class="kpi-lbl">ROAS</div><div class="kpi-val ${roasCls(roasF)}">${roasF!=null?roasF.toFixed(2)+'x':'—'}</div>
-      <div class="kpi-sub">Eduzz / Invest.</div></div>
+      <div class="kpi-sub">${FONTE_LABEL} / Invest.</div></div>
     <div class="kpi" style="--kc:#334155">
       <div class="kpi-lbl">Vendas</div>
       <div class="kpi-val" style="color:var(--text)">${fN(hotQtdF)}</div>
-      <div class="kpi-sub" id="kpiVendasSub">Eduzz</div>
+      <div class="kpi-sub" id="kpiVendasSub">${FONTE_LABEL}</div>
     </div>
     <div class="kpi" style="--kc:${cpaCls(cpaGeral)==='cg'?'#059669':cpaCls(cpaGeral)==='cw2'?'#d97706':'#dc2626'}">
       <div class="kpi-lbl">CPA</div><div class="kpi-val ${cpaCls(cpaGeral)}">${fR(cpaGeral)}</div>
-      <div class="kpi-sub">Invest. / vendas Eduzz</div></div>`;
+      <div class="kpi-sub">Invest. / vendas ${FONTE_LABEL}</div></div>`;
 
   // Recalcular funil a partir dos dados diários filtrados
   const mdF=getMD();
@@ -884,10 +973,10 @@ function renderOverview(){
     dc('chOvMain');
     CH['chOvMain']=new Chart(document.getElementById('chOvMain'),{
       data:{labels:ovLabels,datasets:[
-        {label:'Vendas',data:vendas,backgroundColor:'rgba(249,115,22,.75)',borderRadius:3,type:'bar',yAxisID:'y1',
+        {label:t('Vendas'),data:vendas,backgroundColor:'rgba(249,115,22,.75)',borderRadius:3,type:'bar',yAxisID:'y1',
          datalabels:{...makeDatalabels('#f97316','',v=>v!=null?fN(v):null),display:ctx=>showLabels}},
-        {label:'Invest.',data:invest,borderColor:'#059669',backgroundColor:'transparent',tension:.3,pointRadius:2,borderWidth:2,type:'line',spanGaps:true,datalabels:{display:false}},
-        {label:'CPV',data:cpv,borderColor:'#111',borderDash:[5,3],backgroundColor:'transparent',tension:.3,pointRadius:2,borderWidth:1.5,type:'line',yAxisID:'y2',spanGaps:true,datalabels:{display:ctx=>showLabels,color:'#333',font:{size:labelSize,weight:'bold'},formatter:v=>v!=null?MOEDA+v.toFixed(0):null,anchor:'end',align:'top',offset:2,clip:false}},
+        {label:t('Invest.'),data:invest,borderColor:'#059669',backgroundColor:'transparent',tension:.3,pointRadius:2,borderWidth:2,type:'line',spanGaps:true,datalabels:{display:false}},
+        {label:t('CPV'),data:cpv,borderColor:'#111',borderDash:[5,3],backgroundColor:'transparent',tension:.3,pointRadius:2,borderWidth:1.5,type:'line',yAxisID:'y2',spanGaps:true,datalabels:{display:ctx=>showLabels,color:'#333',font:{size:labelSize,weight:'bold'},formatter:v=>v!=null?MOEDA+v.toFixed(0):null,anchor:'end',align:'top',offset:2,clip:false}},
       ]},
       options:{...bo(),scales:{
         x:{ticks:{color:TXT(),font:bf,maxTicksLimit:14},grid:{color:GRID()}},
@@ -923,7 +1012,7 @@ function renderOverview(){
     dc('chOvOrigem');
     if(USAR_ORIGEM) CH['chOvOrigem']=new Chart(document.getElementById('chOvOrigem'),{
       type:'doughnut',
-      data:{labels:['Tráfego Pago','Orgânico'],datasets:[{data:[pagoCnt,orgCnt],backgroundColor:['#f97316','#ea580c'],borderWidth:0}]},
+      data:{labels:[t('Tráfego Pago'),t('Orgânico')],datasets:[{data:[pagoCnt,orgCnt],backgroundColor:['#f97316','#ea580c'],borderWidth:0}]},
       options:{responsive:true,maintainAspectRatio:false,plugins:{
         legend:{position:'bottom',labels:{color:TXT(),font:bf,padding:10,boxWidth:10}},
         datalabels:{display:true,color:'#fff',font:{size:11,weight:'bold'},
@@ -1027,17 +1116,22 @@ function renderMeta(){
   });
   const hotQtdMK=rawMK.length;
   const hotValMK=r2(rawMK.reduce((s,r)=>s+r.v,0));
-  const roasMK=spMK>0&&hotValMK>0?r2(hotValMK/spMK):null;
-  const cpaMK=spMK>0&&purMK>0?r2(spMK/purMK):null;
+  // Faturamento, ROAS, Vendas e CPA são FIXOS (escopo total do lançamento, só período):
+  // usar o daily SEM filtro de campanha para não inflar ROAS/CPA ao filtrar
+  const mdFull=dailyForSel(new Set());
+  const spFull=mdFull?.spend?.reduce((a,b)=>a+(b||0),0)||0;
+  const purFull=mdFull?.purchase?.reduce((a,b)=>a+(b||0),0)||0;
+  const roasMK=spFull>0&&hotValMK>0?r2(hotValMK/spFull):null;
+  const cpaMK=spFull>0&&purFull>0?r2(spFull/purFull):null;
   document.getElementById('metaKpis').innerHTML=`
     <div class="kpi" style="--kc:#334155"><div class="kpi-lbl">Investimento</div><div class="kpi-val" style="font-size:16px;color:var(--text)">${fR(spMK)}</div></div>
     <div class="kpi" style="--kc:#059669"><div class="kpi-lbl">Faturamento</div><div class="kpi-val" style="font-size:16px;color:#059669">${fR(hotValMK)}</div></div>
     <div class="kpi" style="--kc:${roasCls(roasMK)==='cg'?'#059669':roasCls(roasMK)==='cw2'?'#d97706':'#dc2626'}">
       <div class="kpi-lbl">ROAS</div><div class="kpi-val ${roasCls(roasMK)}">${roasMK!=null?roasMK.toFixed(2)+'x':'—'}</div></div>
     <div class="kpi" style="--kc:#334155">
-      <div class="kpi-lbl">Vendas Eduzz</div>
+      <div class="kpi-lbl">Vendas ${FONTE_LABEL}</div>
       <div class="kpi-val" style="color:var(--text)">${fN(hotQtdMK)}</div>
-      <div class="kpi-sub" id="kpiVendasMetaSub">Eduzz</div>
+      <div class="kpi-sub" id="kpiVendasMetaSub">${FONTE_LABEL}</div>
     </div>
     <div class="kpi" style="--kc:${cpaCls(cpaMK)==='cg'?'#059669':cpaCls(cpaMK)==='cw2'?'#d97706':'#dc2626'}">
       <div class="kpi-lbl">CPA Meta Ads</div><div class="kpi-val ${cpaCls(cpaMK)}">${fR(cpaMK)}</div></div>`;
@@ -1057,10 +1151,10 @@ function renderMeta(){
   dc('chMetaMain');
   CH['chMetaMain']=new Chart(document.getElementById('chMetaMain'),{
     data:{labels:mLabels,datasets:[
-      {label:'Vendas',data:mPur,backgroundColor:'rgba(59,130,246,.7)',borderRadius:3,type:'bar',yAxisID:'y1',
+      {label:t('Vendas'),data:mPur,backgroundColor:'rgba(59,130,246,.7)',borderRadius:3,type:'bar',yAxisID:'y1',
        datalabels:{...makeDatalabels('#3b82f6','',v=>v!=null?fN(v):null),display:ctx=>showLabels}},
-      {label:'Invest.',data:mSp,borderColor:'#059669',backgroundColor:'transparent',tension:.3,pointRadius:2,borderWidth:2,type:'line',spanGaps:true,datalabels:{display:false}},
-      {label:'CPA',data:mCpa,borderColor:'#111',borderDash:[5,3],backgroundColor:'transparent',tension:.3,pointRadius:2,borderWidth:1.5,type:'line',yAxisID:'y2',spanGaps:true,datalabels:{display:ctx=>showLabels,color:'#333',font:{size:labelSize,weight:'bold'},formatter:v=>v!=null?MOEDA+v.toFixed(0):null,anchor:'end',align:'top',offset:2,clip:false}},
+      {label:t('Invest.'),data:mSp,borderColor:'#059669',backgroundColor:'transparent',tension:.3,pointRadius:2,borderWidth:2,type:'line',spanGaps:true,datalabels:{display:false}},
+      {label:t('CPA'),data:mCpa,borderColor:'#111',borderDash:[5,3],backgroundColor:'transparent',tension:.3,pointRadius:2,borderWidth:1.5,type:'line',yAxisID:'y2',spanGaps:true,datalabels:{display:ctx=>showLabels,color:'#333',font:{size:labelSize,weight:'bold'},formatter:v=>v!=null?MOEDA+v.toFixed(0):null,anchor:'end',align:'top',offset:2,clip:false}},
     ]},
     options:{...bo(),scales:{
       x:{ticks:{color:TXT(),font:bf,maxTicksLimit:14},grid:{color:GRID()}},
@@ -1436,10 +1530,10 @@ function segChart(canvasId,tblId,data,lbl,accent){
   // Gráfico: barras = Compras (accent) + linha = CPA (tracejada, eixo direito)
   CH[canvasId]=new Chart(document.getElementById(canvasId),{
     data:{labels,datasets:[
-      {type:'bar',label:'Compras',data:compras,backgroundColor:hexA(accent,.8),borderRadius:3,yAxisID:'y',order:2,
+      {type:'bar',label:t('Compras'),data:compras,backgroundColor:hexA(accent,.8),borderRadius:3,yAxisID:'y',order:2,
        datalabels:{display:ctx=>showLabels,anchor:'end',align:'top',offset:1,clip:false,
          color:accent,font:{size:10,weight:'bold'},formatter:v=>v>0?fN(v):''}},
-      {type:'line',label:'CPA',data:cpa,borderColor:'#111',borderDash:[4,3],backgroundColor:'transparent',
+      {type:'line',label:t('CPA'),data:cpa,borderColor:'#111',borderDash:[4,3],backgroundColor:'transparent',
        tension:.3,pointRadius:2,borderWidth:1.5,yAxisID:'y2',order:1,spanGaps:true,
        datalabels:{display:ctx=>showLabels,color:'#555',font:{size:9,weight:'bold'},
          formatter:v=>v!=null?MOEDA+v.toFixed(0):null,anchor:'end',align:'bottom',offset:3,clip:false}}
@@ -1714,7 +1808,7 @@ function renderPesquisa(){
   const taxa=hotQtd>0?r2(resp/hotQtd*100):null;
   document.getElementById('pesKpis').innerHTML=`
     <div class="kpi" style="--kc:#3b82f6"><div class="kpi-lbl">Respostas</div><div class="kpi-val">${fN(resp)}</div><div class="kpi-sub">na pesquisa</div></div>
-    <div class="kpi" style="--kc:#334155"><div class="kpi-lbl">Vendas Eduzz</div><div class="kpi-val">${fN(hotQtd)}</div><div class="kpi-sub">produto filtrado</div></div>
+    <div class="kpi" style="--kc:#334155"><div class="kpi-lbl">Vendas ${FONTE_LABEL}</div><div class="kpi-val">${fN(hotQtd)}</div><div class="kpi-sub">produto filtrado</div></div>
     <div class="kpi" style="--kc:#059669"><div class="kpi-lbl">Taxa Resp./Vendas</div><div class="kpi-val">${taxa!=null?taxa+'%':'—'}</div><div class="kpi-sub">respostas / vendas</div></div>`;
 
   buildUtmFilters();
