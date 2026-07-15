@@ -306,6 +306,7 @@ body{background:var(--bg);color:var(--text);font-family:'DM Sans',sans-serif;fon
         <button class="pb active" id="btnLctOn" onclick="setLct(true,this)">VSE02</button>
         <button class="pb" id="btnLctOff" onclick="setLct(false,this)">Tudo</button>
       </div>
+      <div class="label-toggle" id="pagoToggle" onclick="togglePagoFilter(this)" title="Mostrar somente vendas de tráfego pago (por código de oferta)">Tráfego Pago</div>
       <div class="label-toggle" id="langToggle" onclick="toggleLang()" title="Idioma" style="display:none">ES</div>
       <div class="label-toggle on" id="labelToggle" onclick="toggleLabels(this)" title="Rótulos de dados">Rótulos</div>
       <button class="theme-btn" onclick="toggleTheme()"><span id="themeIcon">🌙</span><span id="themeLabel">Escuro</span></button>
@@ -451,6 +452,15 @@ const FUNIL_COMPRAS_PAGO=false;
 const USAR_IDIOMAS=false;
 const LANG_DEFAULT='pt';
 // ═══ i18n PT/ES ═══
+let filtroPago=false;
+const isPagoRow=r=>(((r&&(r.t||r.org))||'')+'').includes('Pago');
+function togglePagoFilter(el){
+  filtroPago=!filtroPago;
+  el.classList.toggle('on',filtroPago);
+  try{renderOverview();}catch(e){}
+  try{renderMeta();}catch(e){}
+  try{if(typeof renderDiario==='function')renderDiario();}catch(e){}
+}
 let LANG=(function(){try{return localStorage.getItem('dashLang')||LANG_DEFAULT;}catch(e){return LANG_DEFAULT;}})();
 const I18N={
   // Menu / topbar
@@ -490,6 +500,8 @@ const I18N={
   '(vazio / fora do relatório)':'(vacío / fuera del informe)','Fora do relatório':'Fuera del informe',
   'Direto / Não rastreado':'Directo / No rastreado','período total':'período total',
   'Filtrar respostas por origem':'Filtrar respuestas por origen',
+  'Tráfego Pago':'Tráfico Pago','Código da Oferta':'Código de Oferta','(sem código)':'(sin código)',
+
 };
 const I18N_RX=[
   [/^Dados até (.+)$/,'Datos hasta $1'],
@@ -497,6 +509,7 @@ const I18N_RX=[
   [/^por parâmetro UTM · (.+)$/,'por parámetro UTM · $1'],
   [/^Vendas Diárias \((.+)\) & Investimento$/,'Ventas Diarias ($1) & Inversión'],
   [/^Vendas (\S+)$/,'Ventas $1'],
+  [/^(.+) · só tráfego pago$/,'$1 · solo tráfico pago'],
   [/^(.+) \/ Invest\.$/,'$1 / Invers.'],
   [/^Invest\. \/ vendas (.+)$/,'Invers. / ventas $1'],
 ];
@@ -544,6 +557,7 @@ new MutationObserver(()=>{ if(LANG!=='es') return; clearTimeout(_i18nT); _i18nT=
   var ft=document.getElementById('funnelTitle'); if(ft&&typeof FUNIL_TITULO!=='undefined') ft.textContent=FUNIL_TITULO;
   var tv=document.getElementById('ttlVendasDiarias'); if(tv) tv.textContent='Vendas Diárias ('+FONTE_LABEL+') & Investimento';
   var lt=document.getElementById('langToggle'); if(lt&&typeof USAR_IDIOMAS!=='undefined'&&USAR_IDIOMAS){ lt.style.display='inline-flex'; if(LANG==='es') setTimeout(translateAll,350); }
+  var pt=document.getElementById('pagoToggle'); if(pt&&(typeof USAR_ORIGEM==='undefined'||!USAR_ORIGEM)) pt.style.display='none';
 })();
 const NOME_CLIENTE='Cliente';
 const LOGO_LETRA='C';
@@ -761,7 +775,15 @@ function applyPeriod(daily){
 }
 
 function getMD(){return applyPeriod(getMDraw());}
-function getHD(){return applyPeriod(HOT_DAILY);}
+function getHD(){
+  if(filtroPago&&HOT_RAW?.length){
+    const m={},v={};
+    HOT_RAW.filter(isPagoRow).forEach(r=>{m[r.d]=(m[r.d]||0)+1;v[r.d]=r2((v[r.d]||0)+r.v);});
+    const days=Object.keys(m).sort((a,b)=>parseDayStr(a)-parseDayStr(b));
+    return applyPeriod({days,qtd:days.map(d=>m[d]),valor:days.map(d=>v[d])});
+  }
+  return applyPeriod(HOT_DAILY);
+}
 
 // ═══ CHARTS ═══
 const CH={},PC={};
@@ -799,7 +821,8 @@ function hexA(hex,a){return hex+Math.round(a*255).toString(16).padStart(2,'0');}
 function hotRawFiltered(){
   if(!HOT_RAW?.length) return [];
   const hoje=getHoje();
-  return HOT_RAW.filter(r=>{
+  const base=filtroPago?HOT_RAW.filter(isPagoRow):HOT_RAW;
+  return base.filter(r=>{
     const dt=parseDayStr(r.d);
     if(periodDays>0){
       const fim=new Date(hoje); if(periodDays===1) fim.setDate(fim.getDate()-1); fim.setHours(23,59,59);
@@ -882,7 +905,7 @@ function renderOverview(){
   const purF=  mdKpi?.purchase?.reduce((a,b)=>a+(b||0),0)||0;
   // Hotmart: filtrar HOT_RAW pelo período
   const hoje2=getHoje();
-  const rawKpi=(HOT_RAW||[]).filter(r=>{
+  const rawKpi=(filtroPago?(HOT_RAW||[]).filter(isPagoRow):(HOT_RAW||[])).filter(r=>{
     const dt=parseDayStr(r.d);
     if(periodDays>0){const fim2=new Date(hoje2);if(periodDays===1)fim2.setDate(fim2.getDate()-1);fim2.setHours(23,59,59);const ini=new Date(fim2);ini.setDate(ini.getDate()-(periodDays===1?0:periodDays-1));ini.setHours(0,0,0,0);if(dt<ini||dt>fim2)return false;}
     if(dateI&&dt<dateI)return false; if(dateF&&dt>dateF)return false;
@@ -915,7 +938,7 @@ function renderOverview(){
     const metaPurOv=mdF.purchase?.reduce((a,b)=>a+(b||0),0)||0;
     const pctMetaOv=hotQtdF>0?r2(metaPurOv/hotQtdF*100):null;
     const subEl=document.getElementById('kpiVendasSub');
-    if(subEl) subEl.innerHTML=FONTE_LABEL;
+    if(subEl) subEl.innerHTML=filtroPago?(FONTE_LABEL+' · só tráfego pago'):FONTE_LABEL;
     const funnelKpis={
       impressions:mdF.impressions?.reduce((a,b)=>a+(b||0),0)||0,
       link_clicks:mdF.link_clicks?.reduce((a,b)=>a+(b||0),0)||0,
@@ -990,7 +1013,8 @@ function renderOverview(){
   // Origem e produto — filtrar HOT_RAW pelo período atual
   if(HOT_RAW?.length){
     const hoje=getHoje();
-    const rawF=HOT_RAW.filter(r=>{
+    const rawBase=filtroPago?HOT_RAW.filter(isPagoRow):HOT_RAW;
+    const rawF=rawBase.filter(r=>{
       const dt=parseDayStr(r.d);
       if(periodDays>0){
         const fimF2=new Date(hoje); if(periodDays===1) fimF2.setDate(fimF2.getDate()-1); fimF2.setHours(23,59,59);
@@ -1064,6 +1088,7 @@ function renderOverview(){
 // Tabelas de vendas por parâmetro UTM (Campanha, Source, Medium, Content, Term)
 function renderUtmTables(rawF){
   const dims=[
+    {key:'of', titulo:'Código da Oferta'},
     {key:'uc', titulo:'utm_campaign'},
     {key:'us', titulo:'utm_source'},
     {key:'um', titulo:'utm_medium'},
@@ -1137,7 +1162,7 @@ function renderMeta(){
       <div class="kpi-lbl">CPA Meta Ads</div><div class="kpi-val ${cpaCls(cpaMK)}">${fR(cpaMK)}</div></div>`;
   // Preencher sub do KPI Vendas com info Meta
   const subMeta=document.getElementById('kpiVendasMetaSub');
-  if(subMeta) subMeta.innerHTML=FONTE_LABEL;
+  if(subMeta) subMeta.innerHTML=filtroPago?(FONTE_LABEL+' · só tráfego pago'):FONTE_LABEL;
 
   // Granularidade Diário/Semanal/Mensal
   let mLabels=md.days,mPur=md.purchase,mSp=md.spend,mCpa=md.cpa;
