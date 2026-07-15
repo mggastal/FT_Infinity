@@ -11,19 +11,22 @@ from pathlib import Path
 SHEET_ID         = "1oL-nT38uS-lWN0aYpfLHGuxzUM18PFxIZVM7OxIKeag"
 TEMPLATE_FILE    = "dashboard_lancamento_pago.html"
 OUTPUT_FILE      = "index.html"
-NOME_CLIENTE     = "Longevidad Femenina"
+NOME_CLIENTE     = "Longevidad Feminina"
 LOGO_LETRA       = "L"
 COR_ACENTO       = "#252F26"
 LANCAMENTO_COD   = "CERT-ELF"      # filtra campanhas pelo código; "" = ver tudo
 USAR_PESQUISA    = True            # False = oculta aba Pesquisa no menu e dashboard
-USAR_ORIGEM      = False           # False = oculta o gráfico pizza "Vendas por Origem" (SCK segue nas tabelas)
+USAR_ORIGEM      = True            # pizza Pago vs Orgânico (classificação por código de oferta)
 FUNIL_TITULO     = "Análise do Funil Pago (Meta Ads)"
 FUNIL_COMPRAS_PAGO = True          # True = etapa "Compras" do funil usa vendas com SCK pago (não o pixel do Meta)
 USAR_LOGO        = False           # False = não usa logo.png (sidebar mostra só a letra; sem favicon)
 USAR_RODAPE      = False           # False = oculta o rodapé "Desenvolvido por Sobé Estratégias"
 PRODUTOS_HOTMART = ["Acceso VIP: Taller El Negocio de la Longevidad Femenina"]  # SÓ este produto; "ALL"/[] = todos
-# Origem via SCK (Hotmart) — utm_source do SCK define Pago/Orgânico
-SCK_SRC_PAGO     = ["fb","facebook","ig","instagram"]   # sources considerados tráfego pago
+# ── Classificação Pago vs Orgânico: pelo CÓDIGO DA OFERTA (fonte da verdade) ──
+# Vendas nessas ofertas = tráfego pago; todo o resto = orgânico (resolve UTMs vazias do pago)
+OFERTAS_PAGO     = ["kdpeaqhn","zzoec1tg"]
+# (SCK ainda é lido para as tabelas de UTM, mas NÃO define mais a origem)
+SCK_SRC_PAGO     = ["fb","facebook","ig","instagram"]
 # Valor por venda: como a Hotmart traz moedas misturadas, cada venda conta um valor FIXO.
 # VALOR_FIXO = 10 → cada venda vale US$10 (ignora o preço da planilha). None = usa o preço da planilha.
 VALOR_FIXO       = 10
@@ -148,15 +151,19 @@ def load_hotmart():
     else:
         df["valor"] = to_num(g_on(df,col,"Price"))
 
-    # ── SCK → origem + label ──
+    # ── SCK → labels/UTMs (informativo) ──
     sck = g_on(df,col,"Tracking Source SCK").apply(parse_sck)
     df["src"]      = sck.apply(lambda d:d["source"])
     df["med"]      = sck.apply(lambda d:d["medium"])
     df["camp_sck"] = sck.apply(lambda d:d["campaign"])
     df["u_content"]= sck.apply(lambda d:d["content"])
     df["u_term"]   = sck.apply(lambda d:d["term"])
-    df["origem_sck"]= sck.apply(lambda d:d["origem"])
-    df["Organico ou Pago"] = df["origem_sck"].replace({"Direto":"Orgânico"})
+
+    # ── ORIGEM pelo código da oferta (fonte da verdade) ──
+    pago_set = {c.strip().lower() for c in OFERTAS_PAGO}
+    df["oferta"] = g_on(df,col,"Offer Code").astype(str).str.strip().str.lower().replace({"nan":""})
+    df["origem_sck"] = df["oferta"].isin(pago_set).map({True:"Pago",False:"Orgânico"})
+    df["Organico ou Pago"] = df["origem_sck"]
     df["sck_label"] = df.apply(lambda r: (str(r["src"]).upper()+" · "+str(r["med"])) if r["src"] else "Direto / Não rastreado", axis=1)
 
     # ── Vendas extras manuais (fora do relatório) ──
@@ -169,7 +176,7 @@ def load_hotmart():
         for _ in range(int(e.get("qtd",0))):
             extra_rows.append({"date":d.normalize(),"valor":val_extra,
                 "Produto":(PRODUTOS_HOTMART[0] if PRODUTOS_HOTMART and PRODUTOS_HOTMART!=["ALL"] else "Acceso VIP"),
-                "src":"","med":"","camp_sck":"","u_content":"","u_term":"",
+                "src":"","med":"","camp_sck":"","u_content":"","u_term":"","oferta":"",
                 "Organico ou Pago":EXTRAS_ORIGEM,"origem_sck":EXTRAS_ORIGEM,"sck_label":EXTRAS_LABEL})
     if extra_rows:
         df = pd.concat([df, pd.DataFrame(extra_rows)], ignore_index=True)
@@ -177,10 +184,11 @@ def load_hotmart():
 
     pago = (df["origem_sck"]=="Pago").sum()
     org  = (df["origem_sck"]=="Orgânico").sum()
-    dir_ = (df["origem_sck"]=="Direto").sum()
     _vinfo = f"US${VALOR_FIXO:g}/venda fixo" if VALOR_FIXO is not None else "valor da planilha"
     print(f"     {len(df)} vendas | {df['valor'].sum():,.2f} ({_vinfo})")
-    print(f"     origem SCK → Pago: {pago} | Orgânico: {org} | Direto: {dir_}")
+    print(f"     origem por CÓDIGO DE OFERTA → Pago: {pago} | Orgânico: {org}")
+    if "oferta" in df.columns:
+        print("     por oferta:", dict(df["oferta"].replace({"":"(sem código)"}).value_counts()))
     return df
 
 def hotmart_process(df):
@@ -240,7 +248,8 @@ def hotmart_process(df):
             "um": str(r.get("med","")),
             "uc": str(r.get("camp_sck","")),
             "uco": str(r.get("u_content","")),
-            "ut": str(r.get("u_term",""))
+            "ut": str(r.get("u_term","")),
+            "of": str(r.get("oferta",""))
         })
     return kpis, daily, raw
 
