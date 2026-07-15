@@ -531,7 +531,7 @@ function toggleLang(){
   translateAll();
 }
 let _i18nT=null;
-new MutationObserver(()=>{ if(LANG!=='es') return; clearTimeout(_i18nT); _i18nT=setTimeout(translateAll,80); }).observe(document.body,{childList:true,subtree:true});
+new MutationObserver(()=>{ if(LANG!=='es') return; clearTimeout(_i18nT); _i18nT=setTimeout(translateAll,25); }).observe(document.body,{childList:true,subtree:true});
 
 // Aplica flags de branding (logo.png / rodapé)
 (function(){
@@ -2013,6 +2013,15 @@ window.addEventListener('resize', ajustarPaddingContent);
   }
   renderOverview();
   ajustarPaddingContent();
+})();
+
+// ═══ i18n síncrono: embrulha os renders pra traduzir no mesmo frame (sem flash de PT) ═══
+(function(){
+  const wrap=f=>function(){const r=f.apply(this,arguments); if(LANG==='es'){try{translateAll();}catch(e){}} return r;};
+  ['renderOverview','renderMeta','renderDiario','renderDiarioCharts','renderPesquisa','buildFunnel','renderSeg','renderAds','buildTable'].forEach(n=>{
+    try{ if(typeof self[n]==='function') self[n]=wrap(self[n]); }catch(e){}
+  });
+  if(LANG==='es'){try{translateAll();}catch(e){}}
 })();
 </script>
 </body>
