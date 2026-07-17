@@ -59,8 +59,8 @@ TX_CK_MEDIO      = 20.0
 TX_CONV_BOM      = 7.0    # Taxa Conversão LP ≥ 7% → verde | 5-7% → amarelo | <5% → vermelho
 TX_CONV_MEDIO    = 5.0
 
-CPM_BOM          = 15.0    # CPM ≤ 7 → verde | 7-12 → amarelo | >12 → vermelho (menor = melhor)
-CPM_MEDIO        = 25.0
+CPM_BOM          = 50.0    # CPM ≤ 7 → verde | 7-12 → amarelo | >12 → vermelho (menor = melhor)
+CPM_MEDIO        = 80.0
 
 # ══════════════════════════════════════════════════════
 def sheet_url(t): return f"https://docs.google.com/spreadsheets/d/{SHEET_ID}/gviz/tq?tqx=out:csv&sheet={t}"
