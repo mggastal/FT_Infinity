@@ -530,6 +530,7 @@ const I18N={
   'Tráfego Pago':'Tráfico Pago','Código da Oferta':'Código de Oferta','(sem código)':'(sin código)',
   '+ Impr · Cliques · PV · Init CK':'+ Impr · Clics · PV · Init CK',
   'Meta Ads (gerenciador)':'Meta Ads (administrador)','UTM (Hotmart)':'UTM (Hotmart)',
+  'Taxa Conversão (PV→Compra Hotmart) %':'Tasa Conversión (PV→Compra Hotmart) %',
   '** Grupo UTM (Hotmart): vendas atribuídas por UTM (campanha=utm_term · conjunto=utm_medium · anúncio=utm_content) · Receita = vendas × valor fixo':'** Grupo UTM (Hotmart): ventas atribuidas por UTM (campaña=utm_term · conjunto=utm_medium · anuncio=utm_content) · Ingresos = ventas × valor fijo',
   '* Receita e ROAS: Compras (pixel Meta) × valor fixo por venda':'* Ingresos y ROAS: Compras (píxel Meta) × valor fijo por venta',
   '** V.UTM / ROAS UTM: vendas Hotmart atribuídas por UTM (campanha=utm_term · conjunto=utm_medium · anúncio=utm_content)':'** V.UTM / ROAS UTM: ventas Hotmart atribuidas por UTM (campaña=utm_term · conjunto=utm_medium · anuncio=utm_content)',
@@ -882,6 +883,34 @@ function utmSalesIdx(){
   });
   return idx;
 }
+function metaSpendIdx(){
+  // Invest. agregado por NOME (global, sem separar campanha) — respeita escopo e período/datas
+  const idx={camp:{},adset:{}};
+  if(!Array.isArray(META_RAW_CAMP)) return idx;
+  const hoje=getHoje();
+  META_RAW_CAMP.forEach(r=>{
+    if(filtroLct&&!r.lct) return;
+    const dt=parseDayStr(r.d);
+    if(periodDays>0){const fim=new Date(hoje);if(periodDays===1)fim.setDate(fim.getDate()-1);fim.setHours(23,59,59);
+      const ini=new Date(fim);ini.setDate(ini.getDate()-(periodDays===1?0:periodDays-1));ini.setHours(0,0,0,0);
+      if(dt<ini||dt>fim) return;}
+    if(dateI&&dt<dateI) return; if(dateF&&dt>dateF) return;
+    const ck=normUtm(r.c), ak=normUtm(r.a);
+    if(ck) idx.camp[ck]=r2((idx.camp[ck]||0)+r.sp);
+    if(ak) idx.adset[ak]=r2((idx.adset[ak]||0)+r.sp);
+  });
+  return idx;
+}
+function adSpendIdx(){
+  // Invest. por anúncio: só nos períodos padrão (tabelas pré-calculadas); datas custom → null
+  if(dateI||dateF) return null;
+  const k=getPeriodKey(); if(!k) return null;
+  const t=META_TABLES?.[filtroLct?'lct':'all']?.[k];
+  if(!t?.ads) return null;
+  const idx={};
+  t.ads.forEach(ad=>{const n=normUtm(ad.n); if(n) idx[n]=r2((idx[n]||0)+ad.spend);});
+  return idx;
+}
 let midCols=true;  // métricas de tráfego abertas por padrão; botão ⟨⟩ na tabela recolhe
 function toggleMidCols(){midCols=!midCols;try{renderMeta();}catch(e){}}
 let sortKey=null, sortDir=-1;   // null = ordem padrão (compras desc, do gerador)
@@ -1141,15 +1170,17 @@ function renderOverview(){
   }
 }
 
-// Tabelas de vendas por parâmetro UTM (Campanha, Source, Medium, Content, Term)
+// Tabelas de vendas por parâmetro UTM — cruzadas com Invest. do Meta (visão global, sem separar campanha)
 function renderUtmTables(rawF){
+  const msIdx=metaSpendIdx();
+  const adIdx=adSpendIdx();   // null em datas customizadas
   const dims=[
-    {key:'of', titulo:'Código da Oferta'},
-    {key:'uc', titulo:'utm_campaign'},
-    {key:'us', titulo:'utm_source'},
-    {key:'um', titulo:'utm_medium'},
-    {key:'uco',titulo:'utm_content'},
-    {key:'ut', titulo:'utm_term'},
+    {key:'of', titulo:'Código da Oferta', spend:null},
+    {key:'uc', titulo:'utm_campaign',     spend:null},
+    {key:'us', titulo:'utm_source',       spend:null},
+    {key:'um', titulo:'utm_medium',       spend:msIdx.adset},
+    {key:'uco',titulo:'utm_content',      spend:adIdx},
+    {key:'ut', titulo:'utm_term',         spend:msIdx.camp},
   ];
   function tabela(dim){
     const map={};
@@ -1160,18 +1191,29 @@ function renderUtmTables(rawF){
     });
     const rows=Object.values(map).sort((a,b)=>b.qtd-a.qtd||b.val-a.val);
     if(!rows.length) return '';
+    rows.forEach(r=>{
+      const sp=dim.spend?dim.spend[normUtm(r.n)]:undefined;
+      r.sp=(sp!=null)?sp:null;
+      r.cpa=(r.sp!=null&&r.qtd>0)?r2(r.sp/r.qtd):null;
+    });
+    const hasSp=!!dim.spend;
+    const th=(l,c)=>`<th style="font-size:8px;text-transform:uppercase;letter-spacing:.6px;color:${c||'var(--muted)'};font-weight:700;padding:5px 8px;text-align:right">${l}</th>`;
     return `<div class="utm-table">
       <div class="utm-table-ttl">${dim.titulo}</div>
       <table style="width:100%;border-collapse:collapse">
         <thead><tr style="background:var(--surface2)">
           <th style="font-size:8px;text-transform:uppercase;letter-spacing:.6px;color:var(--muted);font-weight:700;padding:5px 8px;text-align:left">Valor</th>
-          <th style="font-size:8px;text-transform:uppercase;letter-spacing:.6px;color:var(--muted);font-weight:700;padding:5px 8px;text-align:right">Vendas</th>
-          <th style="font-size:8px;text-transform:uppercase;letter-spacing:.6px;color:#059669;font-weight:700;padding:5px 8px;text-align:right">Fat.</th>
+          ${hasSp?th('Invest.'):''}
+          ${th('Vendas')}
+          ${th('Fat.','#059669')}
+          ${hasSp?th('CPA'):''}
         </tr></thead>
         <tbody>${rows.map(r=>`<tr>
-          <td style="font-size:10px;max-width:210px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;padding:4px 8px;border-bottom:1px solid var(--border)" title="${r.n}">${r.n}</td>
+          <td style="font-size:10px;max-width:${hasSp?170:210}px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;padding:4px 8px;border-bottom:1px solid var(--border)" title="${r.n}">${r.n}</td>
+          ${hasSp?`<td style="font-size:10px;text-align:right;padding:4px 8px;font-family:monospace;border-bottom:1px solid var(--border)">${r.sp!=null?fR(r.sp):'—'}</td>`:''}
           <td style="font-size:10px;text-align:right;padding:4px 8px;font-family:monospace;border-bottom:1px solid var(--border);font-weight:700">${fN(r.qtd)}</td>
           <td style="font-size:10px;text-align:right;padding:4px 8px;font-family:monospace;border-bottom:1px solid var(--border);color:#059669">${fR(r.val)}</td>
+          ${hasSp?`<td class="${cpaCls(r.cpa)}" style="font-size:10px;text-align:right;padding:4px 8px;font-family:monospace;border-bottom:1px solid var(--border)">${r.cpa!=null?fR(r.cpa):'—'}</td>`:''}
         </tr>`).join('')}</tbody>
       </table>
     </div>`;
@@ -1857,18 +1899,32 @@ function renderDiarioCharts(){
   let md=getDailyForCamp()||getMD();
   if(!md) return;
 
+  // Alinhar com o funil: se FUNIL_COMPRAS_PAGO, a Tx.Conv usa vendas Hotmart PAGAS (código) por dia,
+  // em vez das compras do pixel (que subnotificam). Numerador muda; PV segue do Meta.
+  const usaPagoCv=(typeof FUNIL_COMPRAS_PAGO!=='undefined'&&FUNIL_COMPRAS_PAGO&&HOT_RAW?.length);
+  let purCv=md.purchase;
+  if(usaPagoCv){
+    const map={};
+    HOT_RAW.forEach(r=>{ if(isPagoRow(r)) map[r.d]=(map[r.d]||0)+1; });
+    purCv=md.days.map(d=>map[d]||0);
+  }
+
   // Granularidade Diário/Semanal/Mensal — bucketiza contagens e RECALCULA as taxas por bucket
   let dLabels=md.days;
   let sCtr=md.ctr,sCpm=md.cpm,sCr=md.connect_rate,sIc=md.tx_ic,sCk=md.tx_checkout,sCv=md.tx_conv;
+  if(usaPagoCv){
+    sCv=md.days.map((_,i)=>(md.page_view?.[i]>0?r2(purCv[i]/md.page_view[i]*100):null));
+  }
   if(diaGran!=='dia'){
     const bk=granBuckets(md.days,diaGran);
     dLabels=bk.labels;
     const imp=granSum(md.impressions,bk.groups), lc=granSum(md.link_clicks,bk.groups),
           pv=granSum(md.page_view,bk.groups), ic=granSum(md.init_checkout,bk.groups),
-          pur=granSum(md.purchase,bk.groups), sp=granSum(md.spend,bk.groups);
+          pur=granSum(md.purchase,bk.groups), sp=granSum(md.spend,bk.groups),
+          purC=granSum(purCv,bk.groups);
     const R=(a,b,f=1)=>a.map((_,i)=>(b[i]>0?r2(a[i]/b[i]*f):null));
     sCtr=R(lc,imp,100); sCpm=R(sp,imp,1000); sCr=R(pv,lc,100);
-    sIc=R(ic,pv,100); sCk=R(pur,ic,100); sCv=R(pur,pv,100);
+    sIc=R(ic,pv,100); sCk=R(pur,ic,100); sCv=R(purC,pv,100);
   }
   const SERIES={ctr:sCtr,cpm:sCpm,cr:sCr,tx_ic:sIc,tx_ck:sCk,tx_cv:sCv};
 
@@ -1884,7 +1940,8 @@ function renderDiarioCharts(){
   const avgCR   = totLc>0   ? r2(totPv/totLc*100)    : null;
   const avgTxIC = totPv>0   ? r2(totIc/totPv*100)    : null;
   const avgTxCK = totIc>0   ? r2(totPur/totIc*100)   : null;
-  const avgTxCV = totPv>0   ? r2(totPur/totPv*100)   : null;
+  const totPurCv= (purCv||[]).reduce((a,b)=>a+(b||0),0);
+  const avgTxCV = totPv>0   ? r2(totPurCv/totPv*100) : null;
   const avgCPM  = totImp>0  ? r2(totSp/totImp*1000)  : null;
 
   // Metas por métrica: {bom, medio, inverso} — inverso=true significa menor=melhor (CPM)
@@ -1916,7 +1973,7 @@ function renderDiarioCharts(){
     {id:'cr',    ttl:'Connect Rate (%)',       suffix:'%', data:()=>SERIES.cr},
     {id:'tx_ic', ttl:'Tx. Init Checkout (%)', suffix:'%', data:()=>SERIES.tx_ic},
     {id:'tx_ck', ttl:'Taxa Checkout (%)',     suffix:'%', data:()=>SERIES.tx_ck},
-    {id:'tx_cv', ttl:'Taxa Conversão (%)',    suffix:'%', data:()=>SERIES.tx_cv},
+    {id:'tx_cv', ttl:usaPagoCv?'Taxa Conversão (PV→Compra Hotmart) %':'Taxa Conversão (%)', suffix:'%', data:()=>SERIES.tx_cv},
   ];
 
   const el=document.getElementById('dailyCharts');
