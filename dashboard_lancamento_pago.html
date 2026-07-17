@@ -870,14 +870,15 @@ const normUtm=s=>(s||'').toString().trim().toLowerCase();
 function hasUtmData(){return !!(HOT_RAW&&HOT_RAW.some&&HOT_RAW.some(r=>r.ut||r.um||r.uco));}
 function utmSalesIdx(){
   // Vendas Hotmart atribuídas por UTM: utm_term=campanha · utm_medium=conjunto · utm_content=anúncio
+  // Conjuntos/anúncios usam CHAVE COMPOSTA (nomes de conjunto se repetem entre campanhas)
+  const ok=s=>{const n=normUtm(s);return (!n||n.startsWith('{{'))?null:n;};
+  const add=(bucket,key,r)=>{const b=bucket[key]=bucket[key]||{q:0,v:0};b.q++;b.v=r2(b.v+r.v);};
   const idx={camp:{},adset:{},ad:{}};
   hotRawFiltered().forEach(r=>{
-    [['camp',r.ut],['adset',r.um],['ad',r.uco]].forEach(([k,val])=>{
-      const n=normUtm(val);
-      if(!n||n.startsWith('{{')) return;  // macro não substituída pelo Meta
-      const b=idx[k][n]=idx[k][n]||{q:0,v:0};
-      b.q++; b.v=r2(b.v+r.v);
-    });
+    const t=ok(r.ut), m=ok(r.um), c=ok(r.uco);
+    if(t) add(idx.camp, t, r);
+    if(t&&m) add(idx.adset, t+'|||'+m, r);
+    if(t&&m&&c) add(idx.ad, t+'|||'+m+'|||'+c, r);
   });
   return idx;
 }
@@ -1567,6 +1568,7 @@ function toggleCampRow(id,rowEl){
     if(!tbl) return;
     if(!adsets.length){tbl.innerHTML='<tbody><tr><td style="padding:8px;color:var(--muted);font-size:11px">Sem conjuntos</td></tr></tbody>';return;}
     const _ua=utmSalesIdx().adset;
+    const uaKey=a=>normUtm(a.camp||campName)+'|||'+normUtm(a.n);
     const HU=hasUtmData();
     const sth=(l,g)=>'<th class="num'+(g?' g-'+g:'')+'" style="font-size:9px;padding:4px 8px;color:var(--muted2)">'+l+'</th>';
     tbl.innerHTML='<thead>'+
@@ -1588,7 +1590,7 @@ function toggleCampRow(id,rowEl){
         <td class="num g-meta ${cpaCls(a.cpa)}" style="font-size:10px;padding:5px 8px">${fR(a.cpa)}</td>
         <td class="num g-meta ${roasCls(a.roas)}" style="font-size:10px;padding:5px 8px">${a.roas!=null?a.roas.toFixed(2)+'x':'—'}</td>
         <td class="num g-meta" style="font-size:10px;padding:5px 8px">${fP(a.tx_cv)}</td>
-        ${hasUtmData()?(()=>{const u=_ua[normUtm(a.n)]||{q:0,v:0};const q=u.q||0;
+        ${hasUtmData()?(()=>{const u=_ua[uaKey(a)]||{q:0,v:0};const q=u.q||0;
           const ucpa=q>0?r2(a.spend/q):null;
           const uroas=a.spend>0&&u.v>0?r2(u.v/a.spend):null;
           const utx=a.pv>0&&q>0?r2(q/a.pv*100):null;
@@ -1621,6 +1623,7 @@ function toggleAdsetRow(campId,adsetName,campName,rowEl){
     if(!inner) return;
     if(!ads.length){inner.innerHTML='<div style="padding:8px;font-size:10px;color:var(--muted)">Sem criativos</div>';return;}
     const _uad=utmSalesIdx().ad;
+    const adKey=ad=>normUtm(ad.camp||campName)+'|||'+normUtm(ad.adset||adsetName)+'|||'+normUtm(ad.n);
     inner.innerHTML='<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(130px,1fr));gap:8px;padding:10px 10px 10px 0">'+
       ads.map(ad=>{
         const img=ad.thumb?`<img src="${ad.thumb}" style="width:100%;height:100%;object-fit:cover" loading="lazy" onerror="this.parentElement.innerHTML='🖼️'">`:'<div style="display:flex;align-items:center;justify-content:center;height:100%;font-size:24px;color:var(--muted2)">🖼️</div>';
@@ -1633,9 +1636,9 @@ function toggleAdsetRow(campId,adsetName,campName,rowEl){
               <div><div style="font-size:7px;color:var(--muted2);text-transform:uppercase">CPA</div><div class="${cpaCls(ad.cpa)}" style="font-size:10px;font-weight:700;font-family:monospace">${fR(ad.cpa)}</div></div>
               <div><div style="font-size:7px;color:var(--muted2);text-transform:uppercase">CTR</div><div style="font-size:10px;font-weight:700;font-family:monospace">${fP(ad.ctr)}</div></div>
               <div><div style="font-size:7px;color:var(--muted2);text-transform:uppercase">Invest.</div><div style="font-size:10px;font-weight:700;font-family:monospace">${fR(ad.spend)}</div></div>
-${hasUtmData()?`              <div><div style="font-size:7px;color:var(--muted2);text-transform:uppercase">V.UTM</div><div style="font-size:10px;font-weight:700;font-family:monospace">${fN((_uad[normUtm(ad.n)]||{}).q||0)}</div></div>
-              <div><div style="font-size:7px;color:var(--muted2);text-transform:uppercase">CPA UTM</div><div style="font-size:10px;font-weight:700;font-family:monospace" class="${cpaCls(((_uad[normUtm(ad.n)]||{}).q||0)>0?r2(ad.spend/(_uad[normUtm(ad.n)]||{}).q):null)}">${(()=>{const q=(_uad[normUtm(ad.n)]||{}).q||0;return q>0?fR(r2(ad.spend/q)):'—';})()}</div></div>
-              <div><div style="font-size:7px;color:var(--muted2);text-transform:uppercase">ROAS UTM</div><div style="font-size:10px;font-weight:700;font-family:monospace" class="${roasCls(ad.spend>0&&(_uad[normUtm(ad.n)]||{}).v>0?r2((_uad[normUtm(ad.n)]||{}).v/ad.spend):null)}">${(()=>{const u=_uad[normUtm(ad.n)];const rr=ad.spend>0&&u&&u.v>0?r2(u.v/ad.spend):null;return rr!=null?rr.toFixed(2)+'x':'—';})()}</div></div>`:''}
+${hasUtmData()?`              <div><div style="font-size:7px;color:var(--muted2);text-transform:uppercase">V.UTM</div><div style="font-size:10px;font-weight:700;font-family:monospace">${fN((_uad[adKey(ad)]||{}).q||0)}</div></div>
+              <div><div style="font-size:7px;color:var(--muted2);text-transform:uppercase">CPA UTM</div><div style="font-size:10px;font-weight:700;font-family:monospace" class="${cpaCls(((_uad[adKey(ad)]||{}).q||0)>0?r2(ad.spend/(_uad[adKey(ad)]||{}).q):null)}">${(()=>{const q=(_uad[adKey(ad)]||{}).q||0;return q>0?fR(r2(ad.spend/q)):'—';})()}</div></div>
+              <div><div style="font-size:7px;color:var(--muted2);text-transform:uppercase">ROAS UTM</div><div style="font-size:10px;font-weight:700;font-family:monospace" class="${roasCls(ad.spend>0&&(_uad[adKey(ad)]||{}).v>0?r2((_uad[adKey(ad)]||{}).v/ad.spend):null)}">${(()=>{const u=_uad[adKey(ad)];const rr=ad.spend>0&&u&&u.v>0?r2(u.v/ad.spend):null;return rr!=null?rr.toFixed(2)+'x':'—';})()}</div></div>`:''}
             </div>
           </div>
         </div>`;
@@ -1647,6 +1650,7 @@ function renderAds(ads){
   const el=document.getElementById('adsGrid');
   if(!ads?.length){el.innerHTML='<div style="color:var(--muted);font-size:12px;padding:8px">Sem criativos</div>';return;}
   const _uad=utmSalesIdx().ad;
+  const adKey=ad=>normUtm(ad.camp)+'|||'+normUtm(ad.adset)+'|||'+normUtm(ad.n);
   el.innerHTML=ads.slice(0,24).map(ad=>{
     const img=ad.thumb?`<img src="${ad.thumb}" loading="lazy" onerror="this.parentElement.innerHTML='<div class=ad-img-ph>🖼️</div>'">`:'<div class="ad-img-ph">🖼️</div>';
     return `<div class="ad-card"><div class="ad-img">${img}</div>
@@ -1658,9 +1662,9 @@ function renderAds(ads){
           <div><div class="as-l">CPA</div><div class="as-v ${cpaCls(ad.cpa)}">${fR(ad.cpa)}</div></div>
           <div><div class="as-l">CTR</div><div class="as-v">${fP(ad.ctr)}</div></div>
           <div><div class="as-l">Invest.</div><div class="as-v">${fR(ad.spend)}</div></div>
-${hasUtmData()?`          <div><div class="as-l">V.UTM</div><div class="as-v">${fN((_uad[normUtm(ad.n)]||{}).q||0)}</div></div>
-          <div><div class="as-l">CPA UTM</div><div class="as-v ${cpaCls(((_uad[normUtm(ad.n)]||{}).q||0)>0?r2(ad.spend/(_uad[normUtm(ad.n)]||{}).q):null)}">${(()=>{const q=(_uad[normUtm(ad.n)]||{}).q||0;return q>0?fR(r2(ad.spend/q)):'—';})()}</div></div>
-          <div><div class="as-l">ROAS UTM</div><div class="as-v ${roasCls(ad.spend>0&&(_uad[normUtm(ad.n)]||{}).v>0?r2((_uad[normUtm(ad.n)]||{}).v/ad.spend):null)}">${(()=>{const u=_uad[normUtm(ad.n)];const rr=ad.spend>0&&u&&u.v>0?r2(u.v/ad.spend):null;return rr!=null?rr.toFixed(2)+'x':'—';})()}</div></div>`:''}
+${hasUtmData()?`          <div><div class="as-l">V.UTM</div><div class="as-v">${fN((_uad[adKey(ad)]||{}).q||0)}</div></div>
+          <div><div class="as-l">CPA UTM</div><div class="as-v ${cpaCls(((_uad[adKey(ad)]||{}).q||0)>0?r2(ad.spend/(_uad[adKey(ad)]||{}).q):null)}">${(()=>{const q=(_uad[adKey(ad)]||{}).q||0;return q>0?fR(r2(ad.spend/q)):'—';})()}</div></div>
+          <div><div class="as-l">ROAS UTM</div><div class="as-v ${roasCls(ad.spend>0&&(_uad[adKey(ad)]||{}).v>0?r2((_uad[adKey(ad)]||{}).v/ad.spend):null)}">${(()=>{const u=_uad[adKey(ad)];const rr=ad.spend>0&&u&&u.v>0?r2(u.v/ad.spend):null;return rr!=null?rr.toFixed(2)+'x':'—';})()}</div></div>`:''}
         </div>
       </div></div>`;
   }).join('');
