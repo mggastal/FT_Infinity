@@ -1427,6 +1427,7 @@ function buildTable(elId,data,mainCol){
     {k:'spend',l:'Invest.',f:fR},
     {k:'_tg'},                       // botão ⟨⟩ recolhe/expande as métricas de tráfego
     ...(midCols?MID:[]),
+    {k:'cpm',l:'CPM',f:fR,cls2:cpmCls},
     {k:'ctr',l:'CTR',f:fP},{k:'cr',l:'C.Rate',f:fP},
     // ── Grupo META ADS (gerenciador/pixel) ──
     {k:'pur',  l:'Compras', f:fN, grp:'meta', gs:1},
@@ -1536,6 +1537,7 @@ function buildTable(elId,data,mainCol){
               case 'urev':  return cell(fR(tot.urev),G);
               case 'utx':   {const ut=tot.pv>0&&tot.upur>0?r2(tot.upur/tot.pv*100):null; return cell(fP(ut),G);}
               case 'uroas': return cell(fx(uroas),roasCls(uroas)+G);
+              case 'cpm':   {const cm=tot.imp>0?r2(tot.spend/tot.imp*1000):null; return cell(fR(cm),cpmCls(cm));}
               case 'ctr':   return cell(fP(ctr));
               case 'cr':    return cell(fP(cr));
               case 'tx_cv': return cell(fP(txcv),G);
