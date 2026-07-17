@@ -140,7 +140,25 @@ body{background:var(--bg);color:var(--text);font-family:'DM Sans',sans-serif;fon
 .section{margin-bottom:20px;}
 
 /* TABELAS */
-.tc{background:var(--surface);border:1px solid var(--border);border-radius:var(--r);overflow:hidden;box-shadow:var(--sh);overflow-x:auto;margin-bottom:14px;}
+.tc{background:var(--surface);border:1px solid var(--border);border-radius:var(--r);overflow:hidden;box-shadow:var(--sh);overflow-x:auto;margin-bottom:14px;scrollbar-width:thin;}
+.tc::-webkit-scrollbar{height:9px;}
+.tc::-webkit-scrollbar-track{background:var(--surface2);border-radius:0 0 var(--r) var(--r);}
+.tc::-webkit-scrollbar-thumb{background:var(--muted2);border-radius:6px;border:2px solid var(--surface2);}
+.tc::-webkit-scrollbar-thumb:hover{background:var(--muted);}
+.th-sort{cursor:pointer;user-select:none;}
+.th-sort:hover{color:var(--text);}
+.gh{font-size:9px;font-weight:800;text-transform:uppercase;letter-spacing:.8px;text-align:center;padding:5px 8px;border-radius:6px 6px 0 0;}
+.gh-meta{background:rgba(59,130,246,.14);color:#2563eb;border-bottom:2px solid #3b82f6;}
+.gh-utm{background:rgba(217,119,6,.14);color:#b45309;border-bottom:2px solid #d97706;}
+[data-theme="dark"] .gh-meta{background:rgba(59,130,246,.18);color:#93c5fd;}
+[data-theme="dark"] .gh-utm{background:rgba(217,119,6,.20);color:#fcd34d;}
+td.g-meta,th.g-meta{background:rgba(59,130,246,.05);}
+td.g-utm,th.g-utm{background:rgba(217,119,6,.06);}
+[data-theme="dark"] td.g-meta,[data-theme="dark"] th.g-meta{background:rgba(59,130,246,.09);}
+[data-theme="dark"] td.g-utm,[data-theme="dark"] th.g-utm{background:rgba(217,119,6,.10);}
+.g-start{border-left:2px solid rgba(0,0,0,.10)!important;}
+[data-theme="dark"] .g-start{border-left-color:rgba(255,255,255,.12)!important;}
+.grp-row th{background:transparent;}
 .tc table{width:100%;border-collapse:collapse;min-width:700px;}
 .tc thead th{font-size:9px;text-transform:uppercase;letter-spacing:.8px;color:var(--muted);font-weight:700;padding:8px 10px;text-align:left;background:var(--surface2);border-bottom:1px solid var(--border);white-space:nowrap;}
 .tc thead th.num{text-align:right;}
@@ -453,6 +471,7 @@ const FONTE_LABEL='Eduzz';
 const FUNIL_TITULO='Funil de Conversão';
 const FUNIL_COMPRAS_PAGO=false;
 const USAR_IDIOMAS=false;
+const NOTA_RECEITA='* Receita e ROAS: Action Value Omni Purchase do Meta (atribuição)';
 const LANG_DEFAULT='pt';
 // ═══ i18n PT/ES ═══
 let filtroPago=false;
@@ -463,6 +482,11 @@ function togglePagoFilter(el){
   try{renderOverview();}catch(e){}
   try{renderMeta();}catch(e){}
   try{if(typeof renderDiario==='function')renderDiario();}catch(e){}
+}
+function updatePagoToggleVis(p){
+  const el=document.getElementById('pagoToggle'); if(!el) return;
+  const ok=(typeof USAR_ORIGEM!=='undefined'&&USAR_ORIGEM)&&p==='overview';
+  el.style.display=ok?'':'none';
 }
 let LANG=(function(){try{return localStorage.getItem('dashLang')||LANG_DEFAULT;}catch(e){return LANG_DEFAULT;}})();
 const I18N={
@@ -486,7 +510,7 @@ const I18N={
   'Campanhas':'Campañas','Campanha':'Campaña','Segmentação':'Segmentación',
   'Compras por segmento · investimento e CPA no tooltip · respeita filtro de campanha e período':'Compras por segmento · inversión y CPA en el tooltip · respeta filtro de campaña y período',
   'Gênero':'Género','Faixa Etária':'Rango de Edad','Posicionamento':'Ubicación','Anúncios':'Anuncios','Anúncio':'Anuncio',
-  'CAMPANHA':'CAMPAÑA','CLIQUES':'CLICS','RECEITA*':'INGRESOS*','TOTAL':'TOTAL','Conjunto':'Conjunto',
+  'CAMPANHA':'CAMPAÑA','CLIQUES':'CLICS','Cliques':'Clics','RECEITA*':'INGRESOS*','Receita*':'Ingresos*','Receita':'Ingresos','TOTAL':'TOTAL','Conjunto':'Conjunto',
   'Faturamento':'Facturación','Fat.':'Fact.','Valor':'Valor',
   'Sem vendas no período':'Sin ventas en el período','Sem dados no período':'Sin datos en el período','Sem dados':'Sin datos',
   '* Receita e ROAS: Action Value Omni Purchase do Meta (atribuição)':'* Ingresos y ROAS: Action Value Omni Purchase de Meta (atribución)',
@@ -504,6 +528,11 @@ const I18N={
   'Direto / Não rastreado':'Directo / No rastreado','período total':'período total',
   'Filtrar respostas por origem':'Filtrar respuestas por origen',
   'Tráfego Pago':'Tráfico Pago','Código da Oferta':'Código de Oferta','(sem código)':'(sin código)',
+  '+ Impr · Cliques · PV · Init CK':'+ Impr · Clics · PV · Init CK',
+  'Meta Ads (gerenciador)':'Meta Ads (administrador)','UTM (Hotmart)':'UTM (Hotmart)',
+  '** Grupo UTM (Hotmart): vendas atribuídas por UTM (campanha=utm_term · conjunto=utm_medium · anúncio=utm_content) · Receita = vendas × valor fixo':'** Grupo UTM (Hotmart): ventas atribuidas por UTM (campaña=utm_term · conjunto=utm_medium · anuncio=utm_content) · Ingresos = ventas × valor fijo',
+  '* Receita e ROAS: Compras (pixel Meta) × valor fixo por venda':'* Ingresos y ROAS: Compras (píxel Meta) × valor fijo por venta',
+  '** V.UTM / ROAS UTM: vendas Hotmart atribuídas por UTM (campanha=utm_term · conjunto=utm_medium · anúncio=utm_content)':'** V.UTM / ROAS UTM: ventas Hotmart atribuidas por UTM (campaña=utm_term · conjunto=utm_medium · anuncio=utm_content)',
 
 };
 const I18N_RX=[
@@ -560,7 +589,7 @@ new MutationObserver(()=>{ if(LANG!=='es') return; clearTimeout(_i18nT); _i18nT=
   var ft=document.getElementById('funnelTitle'); if(ft&&typeof FUNIL_TITULO!=='undefined') ft.textContent=FUNIL_TITULO;
   var tv=document.getElementById('ttlVendasDiarias'); if(tv) tv.textContent='Vendas Diárias ('+FONTE_LABEL+') & Investimento';
   var lt=document.getElementById('langToggle'); if(lt&&typeof USAR_IDIOMAS!=='undefined'&&USAR_IDIOMAS){ lt.style.display='inline-flex'; if(LANG==='es') setTimeout(translateAll,350); }
-  var pt=document.getElementById('pagoToggle'); if(pt&&(typeof USAR_ORIGEM==='undefined'||!USAR_ORIGEM)) pt.style.display='none';
+  updatePagoToggleVis('overview');
 })();
 const NOME_CLIENTE='Cliente';
 const LOGO_LETRA='C';
@@ -836,6 +865,29 @@ function hotRawFiltered(){
     if(dateF&&dt>dateF) return false;
     return true;
   });
+}
+const normUtm=s=>(s||'').toString().trim().toLowerCase();
+function hasUtmData(){return !!(HOT_RAW&&HOT_RAW.some&&HOT_RAW.some(r=>r.ut||r.um||r.uco));}
+function utmSalesIdx(){
+  // Vendas Hotmart atribuídas por UTM: utm_term=campanha · utm_medium=conjunto · utm_content=anúncio
+  const idx={camp:{},adset:{},ad:{}};
+  hotRawFiltered().forEach(r=>{
+    [['camp',r.ut],['adset',r.um],['ad',r.uco]].forEach(([k,val])=>{
+      const n=normUtm(val);
+      if(!n||n.startsWith('{{')) return;  // macro não substituída pelo Meta
+      const b=idx[k][n]=idx[k][n]||{q:0,v:0};
+      b.q++; b.v=r2(b.v+r.v);
+    });
+  });
+  return idx;
+}
+let midCols=true;  // métricas de tráfego abertas por padrão; botão ⟨⟩ na tabela recolhe
+function toggleMidCols(){midCols=!midCols;try{renderMeta();}catch(e){}}
+let sortKey=null, sortDir=-1;   // null = ordem padrão (compras desc, do gerador)
+function setSort(k){
+  if(sortKey===k){ sortDir=-sortDir; }
+  else { sortKey=k; sortDir=-1; }   // primeiro clique: maior → menor
+  try{renderMeta();}catch(e){}
 }
 function buildFunnel(mk){
   if(!mk) return;
@@ -1367,27 +1419,74 @@ function buildTable(elId,data,mainCol){
     // adsets não tem campo camp, então agrupamos por nome parcial
   });
   
+  const MID=[{k:'imp',l:'Impr.',cls:'cn'},{k:'lc',l:'Cliques',cls:'cn'},
+    {k:'pv',l:'PV',cls:'cn'},{k:'ic',l:'Init CK',cls:'cn'}];
+  const fx=v=>v!=null?v.toFixed(2)+'x':'—';
   const COLS=[
-    {k:'spend',l:'Invest.',f:fR},{k:'imp',l:'Impr.',cls:'cn'},{k:'lc',l:'Cliques',cls:'cn'},
-    {k:'pv',l:'PV',cls:'cn'},{k:'ic',l:'Init CK',cls:'cn'},{k:'pur',l:'Compras',f:fN},
-    {k:'rev',l:'Receita*',f:fR},{k:'ctr',l:'CTR',f:fP},{k:'cr',l:'C.Rate',f:fP},
-    {k:'tx_cv',l:'Tx.Conv',f:fP},{k:'cpa',l:'CPA',f:fR,cls2:cpaCls},{k:'roas',l:'ROAS*',f:v=>v!=null?v.toFixed(2)+'x':'—',cls2:roasCls}
+    {k:'spend',l:'Invest.',f:fR},
+    {k:'_tg'},                       // botão ⟨⟩ recolhe/expande as métricas de tráfego
+    ...(midCols?MID:[]),
+    {k:'ctr',l:'CTR',f:fP},{k:'cr',l:'C.Rate',f:fP},
+    // ── Grupo META ADS (gerenciador/pixel) ──
+    {k:'pur',  l:'Compras', f:fN, grp:'meta', gs:1},
+    {k:'rev',  l:'Receita*',f:fR, grp:'meta'},
+    {k:'cpa',  l:'CPA',     f:fR, cls2:cpaCls, grp:'meta'},
+    {k:'roas', l:'ROAS*',   f:fx, cls2:roasCls, grp:'meta'},
+    {k:'tx_cv',l:'Tx.Conv', f:fP, grp:'meta'},
+    // ── Grupo UTM (Hotmart) ──
+    ...(hasUtmData()?[
+      {k:'upur', l:'Compras', f:fN, strong:1, grp:'utm', gs:1},
+      {k:'urev', l:'Receita', f:fR, grp:'utm'},
+      {k:'ucpa', l:'CPA',     f:fR, cls2:cpaCls, grp:'utm'},
+      {k:'uroas',l:'ROAS',    f:fx, cls2:roasCls, grp:'utm'},
+      {k:'utx',  l:'Tx.Conv', f:fP, grp:'utm'}
+    ]:[])
   ];
-  const head='<tr><th></th><th>'+mainCol+'</th>'+COLS.map(c=>'<th class="num">'+c.l+'</th>').join('')+'</tr>';
+  // Vendas atribuídas por UTM (Hotmart) por campanha
+  const _u=utmSalesIdx();
+  data.forEach(r=>{const u=_u.camp[normUtm(r.n)];r.upur=u?u.q:0;r.urev=u?u.v:0;
+    r.ucpa=(r.upur>0)?r2(r.spend/r.upur):null;
+    r.uroas=(r.spend>0&&r.urev>0)?r2(r.urev/r.spend):null;
+    r.utx=(r.pv>0&&r.upur>0)?r2(r.upur/r.pv*100):null;});
+  // Ordenação por clique no cabeçalho
+  if(sortKey){
+    data=[...data].sort((a,b)=>{
+      const va=a[sortKey], vb=b[sortKey];
+      const dir=(sortDir===-1)?1:-1;   // -1 = desc (maior primeiro)
+      if(sortKey==='n') return String(va).localeCompare(String(vb))*dir;
+      const na=(va==null||isNaN(va))?null:Number(va);
+      const nb=(vb==null||isNaN(vb))?null:Number(vb);
+      if(na==null&&nb==null) return 0;
+      if(na==null) return 1;      // nulos sempre por último
+      if(nb==null) return -1;
+      return (nb-na)*dir;
+    });
+  }
+  const AC=(typeof COR_ACENTO!=='undefined'&&COR_ACENTO)?COR_ACENTO:'#e11d48';
+  const tgBtn=`<span onclick="toggleMidCols()" title="${midCols?'Recolher':'Expandir'} Impr · Cliques · PV · Init CK" style="cursor:pointer;display:inline-flex;align-items:center;justify-content:center;width:20px;height:18px;border-radius:5px;background:${AC};color:#fff;font-size:10px;font-weight:800;letter-spacing:-1px;user-select:none">${midCols?'⟩⟨':'⟨⟩'}</span>`;
+  const ind=k=>sortKey===k?('<span class="s-ind" style="font-size:8px;margin-left:2px">'+(sortDir===-1?'▼':'▲')+'</span>'):'';
+  const nLead=COLS.filter(c=>!c.grp).length;
+  const nMeta=COLS.filter(c=>c.grp==='meta').length;
+  const nUtm =COLS.filter(c=>c.grp==='utm').length;
+  const grpRow='<tr class="grp-row"><th colspan="'+(2+nLead)+'" style="border:none;background:transparent"></th>'+
+    '<th colspan="'+nMeta+'" class="gh gh-meta">Meta Ads (gerenciador)</th>'+
+    (nUtm?'<th colspan="'+nUtm+'" class="gh gh-utm">UTM (Hotmart)</th>':'')+'</tr>';
+  const head=grpRow+'<tr><th></th><th class="th-sort" onclick="setSort(\'n\')">'+mainCol+ind('n')+'</th>'+COLS.map(c=>c.k==='_tg'?('<th style="width:26px;padding:2px;text-align:center">'+tgBtn+'</th>'):('<th class="num th-sort'+(c.grp?' g-'+c.grp:'')+(c.gs?' g-start':'')+'" onclick="setSort(\''+c.k+'\')">'+c.l+ind(c.k)+'</th>')).join('')+'</tr>';
   
   let rows='';
   data.forEach((r,i)=>{
     const cid='camp_'+elId+'_'+i;
     const tds=COLS.map(c=>{
+      if(c.k==='_tg') return '<td style="width:26px"></td>';
       const v=r[c.k];
       const cls2=c.cls2?c.cls2(v):'';
       const cls=c.cls||'';
       const fmt=c.f?c.f(v):fN(v);
-      return `<td class="num ${cls} ${cls2}" style="${cls==='cn'?'color:var(--muted2)':''}">${fmt}</td>`;
+      return `<td class="num ${cls} ${cls2}${c.grp?' g-'+c.grp:''}${c.gs?' g-start':''}" style="${cls==='cn'?'color:var(--muted2)':''}${c.strong?';font-weight:700':''}">${fmt}</td>`;
     }).join('');
     rows+=`<tr style="cursor:pointer" onclick="toggleCampRow('${cid}',this)">
       <td style="width:20px;text-align:center;color:var(--muted2);font-size:11px" id="arrow_${cid}">▶</td>
-      <td style="max-width:200px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:11px;font-weight:600" title="${r.n}">${statusDot(r.st||getStMap().camp[r.n])}${r.n}</td>
+      <td style="white-space:nowrap;font-size:11px;font-weight:600" title="${r.n}">${statusDot(r.st||getStMap().camp[r.n])}${r.n}</td>
       ${tds}
     </tr>`;
     // Sub-linhas: conjuntos desta campanha
@@ -1409,30 +1508,45 @@ function buildTable(elId,data,mainCol){
         <td></td>
         <td style="font-size:10px;padding:6px 10px;font-weight:700;color:var(--muted2);text-transform:uppercase;letter-spacing:.5px">Total</td>
         ${(()=>{
-          const tot={spend:0,imp:0,lc:0,pv:0,ic:0,pur:0,rev:0};
-          data.forEach(r=>{tot.spend+=r.spend||0;tot.imp+=r.imp||0;tot.lc+=r.lc||0;tot.pv+=r.pv||0;tot.ic+=r.ic||0;tot.pur+=r.pur||0;tot.rev+=r.rev||0;});
+          const tot={spend:0,imp:0,lc:0,pv:0,ic:0,pur:0,rev:0,upur:0,urev:0};
+          data.forEach(r=>{tot.spend+=r.spend||0;tot.imp+=r.imp||0;tot.lc+=r.lc||0;tot.pv+=r.pv||0;tot.ic+=r.ic||0;tot.pur+=r.pur||0;tot.rev+=r.rev||0;tot.upur+=r.upur||0;tot.urev+=r.urev||0;});
           const ctr=tot.imp>0?r2(tot.lc/tot.imp*100):null;
           const cr=tot.lc>0?r2(tot.pv/tot.lc*100):null;
-          const txic=tot.pv>0?r2(tot.ic/tot.pv*100):null;
-          const txck=tot.pur>0&&tot.ic>0?r2(tot.pur/tot.ic*100):null;
           const txcv=tot.pv>0?r2(tot.pur/tot.pv*100):null;
           const cpa=tot.pur>0?r2(tot.spend/tot.pur):null;
           const roas=tot.spend>0?r2(tot.rev/tot.spend):null;
-          return '<td class="num" style="padding:8px 10px">'+fR(tot.spend)+'</td>'+
-            '<td class="num" style="padding:8px 10px;color:var(--muted2)">'+fN(tot.imp)+'</td>'+
-            '<td class="num" style="padding:8px 10px;color:var(--muted2)">'+fN(tot.lc)+'</td>'+
-            '<td class="num" style="padding:8px 10px;color:var(--muted2)">'+fN(tot.pv)+'</td>'+
-            '<td class="num" style="padding:8px 10px;color:var(--muted2)">'+fN(tot.ic)+'</td>'+
-            '<td class="num" style="padding:8px 10px">'+fN(tot.pur)+'</td>'+
-            '<td class="num" style="padding:8px 10px">'+fR(tot.rev)+'</td>'+
-            '<td class="num" style="padding:8px 10px">'+fP(ctr)+'</td>'+
-            '<td class="num" style="padding:8px 10px">'+fP(cr)+'</td>'+
-            '<td class="num" style="padding:8px 10px">'+fP(txcv)+'</td>'+
-            '<td class="num '+cpaCls(cpa)+'" style="padding:8px 10px">'+fR(cpa)+'</td>'+
-            '<td class="num '+roasCls(roas)+'" style="padding:8px 10px">'+(roas!=null?roas.toFixed(2)+'x':'—')+'</td>';
+          const uroas=tot.spend>0&&tot.urev>0?r2(tot.urev/tot.spend):null;
+          const fx=v=>v!=null?v.toFixed(2)+'x':'—';
+          const cell=(txt,cls='',st='')=>'<td class="num '+cls+'" style="padding:8px 10px;'+st+'">'+txt+'</td>';
+          const gc=c=>(c.grp?' g-'+c.grp:'')+(c.gs?' g-start':'');
+          return COLS.map(c=>{
+            const G=gc(c);
+            switch(c.k){
+              case 'spend': return cell(fR(tot.spend));
+              case 'imp':   return cell(fN(tot.imp),'','color:var(--muted2)');
+              case 'lc':    return cell(fN(tot.lc),'','color:var(--muted2)');
+              case 'pv':    return cell(fN(tot.pv),'','color:var(--muted2)');
+              case 'ic':    return cell(fN(tot.ic),'','color:var(--muted2)');
+              case 'pur':   return cell(fN(tot.pur),G);
+              case 'rev':   return cell(fR(tot.rev),G);
+              case '_tg':   return cell('');
+              case 'upur':  return cell(fN(tot.upur),G,'font-weight:700');
+              case 'ucpa':  {const uc=tot.upur>0?r2(tot.spend/tot.upur):null; return cell(fR(uc),cpaCls(uc)+G);}
+              case 'urev':  return cell(fR(tot.urev),G);
+              case 'utx':   {const ut=tot.pv>0&&tot.upur>0?r2(tot.upur/tot.pv*100):null; return cell(fP(ut),G);}
+              case 'uroas': return cell(fx(uroas),roasCls(uroas)+G);
+              case 'ctr':   return cell(fP(ctr));
+              case 'cr':    return cell(fP(cr));
+              case 'tx_cv': return cell(fP(txcv),G);
+              case 'cpa':   return cell(fR(cpa),cpaCls(cpa)+G);
+              case 'roas':  return cell(fx(roas),roasCls(roas)+G);
+              default: return cell('—');
+            }
+          }).join('');
         })()}
       </tr>
-      <tr><td colspan="13" style="padding:5px 10px;font-size:9px;color:var(--muted2)">* Receita e ROAS: Action Value Omni Purchase do Meta (atribuição)</td></tr>
+      <tr><td colspan="${COLS.length+2}" style="padding:5px 10px 0;font-size:9px;color:var(--muted2)">${NOTA_RECEITA}</td></tr>
+      ${hasUtmData()?`<tr><td colspan="${COLS.length+2}" style="padding:0 10px 5px;font-size:9px;color:var(--muted2)">** Grupo UTM (Hotmart): vendas atribuídas por UTM (campanha=utm_term · conjunto=utm_medium · anúncio=utm_content) · Receita = vendas × valor fixo</td></tr>`:''}
     </tfoot>
   </table>`;
 }
@@ -1452,28 +1566,40 @@ function toggleCampRow(id,rowEl){
     const tbl=document.getElementById('sub_'+id);
     if(!tbl) return;
     if(!adsets.length){tbl.innerHTML='<tbody><tr><td style="padding:8px;color:var(--muted);font-size:11px">Sem conjuntos</td></tr></tbody>';return;}
-    tbl.innerHTML='<thead><tr>'+
+    const _ua=utmSalesIdx().adset;
+    const HU=hasUtmData();
+    const sth=(l,g)=>'<th class="num'+(g?' g-'+g:'')+'" style="font-size:9px;padding:4px 8px;color:var(--muted2)">'+l+'</th>';
+    tbl.innerHTML='<thead>'+
+      '<tr class="grp-row"><th colspan="3" style="border:none;background:transparent"></th>'+
+      '<th colspan="5" class="gh gh-meta" style="font-size:8px">Meta Ads (gerenciador)</th>'+
+      (HU?'<th colspan="5" class="gh gh-utm" style="font-size:8px">UTM (Hotmart)</th>':'')+'</tr>'+
+      '<tr>'+
       '<th style="font-size:9px;padding:4px 8px;text-align:left;color:var(--muted2)">Conjunto</th>'+
-      '<th class="num" style="font-size:9px;padding:4px 8px;color:var(--muted2)">Invest.</th>'+
-      '<th class="num" style="font-size:9px;padding:4px 8px;color:var(--muted2)">Compras</th>'+
-      '<th class="num" style="font-size:9px;padding:4px 8px;color:var(--muted2)">Receita</th>'+
-      '<th class="num" style="font-size:9px;padding:4px 8px;color:var(--muted2)">CTR</th>'+
-      '<th class="num" style="font-size:9px;padding:4px 8px;color:var(--muted2)">Tx.Conv</th>'+
-      '<th class="num" style="font-size:9px;padding:4px 8px;color:var(--muted2)">CPA</th>'+
-      '<th class="num" style="font-size:9px;padding:4px 8px;color:var(--muted2)">ROAS</th>'+
+      sth('Invest.')+sth('CTR')+
+      sth('Compras','meta')+sth('Receita','meta')+sth('CPA','meta')+sth('ROAS','meta')+sth('Tx.Conv','meta')+
+      (HU?sth('Compras','utm')+sth('Receita','utm')+sth('CPA','utm')+sth('ROAS','utm')+sth('Tx.Conv','utm'):'')+
       '</tr></thead><tbody>'+
       adsets.map(a=>`<tr onclick="toggleAdsetRow('${id}','${a.n.replace(/'/g,"\'")}','${campName.replace(/'/g,"\'")}',this)" style="cursor:pointer">
         <td style="font-size:10px;padding:5px 8px;max-width:180px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="${a.n}">▶ ${statusDot(a.st||getStMap().adset[(a.camp||campName)+'|||'+a.n])}${a.n}</td>
         <td class="num" style="font-size:10px;padding:5px 8px">${fR(a.spend)}</td>
-        <td class="num" style="font-size:10px;padding:5px 8px">${fN(a.pur)}</td>
-        <td class="num" style="font-size:10px;padding:5px 8px">${fR(a.rev)}</td>
         <td class="num" style="font-size:10px;padding:5px 8px">${fP(a.ctr)}</td>
-        <td class="num" style="font-size:10px;padding:5px 8px">${fP(a.tx_cv)}</td>
-        <td class="num ${cpaCls(a.cpa)}" style="font-size:10px;padding:5px 8px">${fR(a.cpa)}</td>
-        <td class="num ${roasCls(a.roas)}" style="font-size:10px;padding:5px 8px">${a.roas!=null?a.roas.toFixed(2)+'x':'—'}</td>
+        <td class="num g-meta g-start" style="font-size:10px;padding:5px 8px">${fN(a.pur)}</td>
+        <td class="num g-meta" style="font-size:10px;padding:5px 8px">${fR(a.rev)}</td>
+        <td class="num g-meta ${cpaCls(a.cpa)}" style="font-size:10px;padding:5px 8px">${fR(a.cpa)}</td>
+        <td class="num g-meta ${roasCls(a.roas)}" style="font-size:10px;padding:5px 8px">${a.roas!=null?a.roas.toFixed(2)+'x':'—'}</td>
+        <td class="num g-meta" style="font-size:10px;padding:5px 8px">${fP(a.tx_cv)}</td>
+        ${hasUtmData()?(()=>{const u=_ua[normUtm(a.n)]||{q:0,v:0};const q=u.q||0;
+          const ucpa=q>0?r2(a.spend/q):null;
+          const uroas=a.spend>0&&u.v>0?r2(u.v/a.spend):null;
+          const utx=a.pv>0&&q>0?r2(q/a.pv*100):null;
+          return `<td class="num g-utm g-start" style="font-size:10px;padding:5px 8px;font-weight:700">${fN(q)}</td>
+        <td class="num g-utm" style="font-size:10px;padding:5px 8px">${fR(u.v||0)}</td>
+        <td class="num g-utm ${cpaCls(ucpa)}" style="font-size:10px;padding:5px 8px">${fR(ucpa)}</td>
+        <td class="num g-utm ${roasCls(uroas)}" style="font-size:10px;padding:5px 8px">${uroas!=null?uroas.toFixed(2)+'x':'—'}</td>
+        <td class="num g-utm" style="font-size:10px;padding:5px 8px">${fP(utx)}</td>`;})():''}
       </tr>
       <tr id="ads_${id}_${a.n.replace(/[^a-zA-Z0-9]/g,'_')}" style="display:none">
-        <td colspan="8" style="padding:0 0 0 20px;background:var(--bg)">
+        <td colspan="${hasUtmData()?13:8}" style="padding:0 0 0 20px;background:var(--bg)">
           <div id="ads_inner_${id}_${a.n.replace(/[^a-zA-Z0-9]/g,'_')}"></div>
         </td>
       </tr>`).join('')+'</tbody>';
@@ -1494,6 +1620,7 @@ function toggleAdsetRow(campId,adsetName,campName,rowEl){
     const inner=document.getElementById('ads_inner_'+campId+'_'+key);
     if(!inner) return;
     if(!ads.length){inner.innerHTML='<div style="padding:8px;font-size:10px;color:var(--muted)">Sem criativos</div>';return;}
+    const _uad=utmSalesIdx().ad;
     inner.innerHTML='<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(130px,1fr));gap:8px;padding:10px 10px 10px 0">'+
       ads.map(ad=>{
         const img=ad.thumb?`<img src="${ad.thumb}" style="width:100%;height:100%;object-fit:cover" loading="lazy" onerror="this.parentElement.innerHTML='🖼️'">`:'<div style="display:flex;align-items:center;justify-content:center;height:100%;font-size:24px;color:var(--muted2)">🖼️</div>';
@@ -1506,6 +1633,9 @@ function toggleAdsetRow(campId,adsetName,campName,rowEl){
               <div><div style="font-size:7px;color:var(--muted2);text-transform:uppercase">CPA</div><div class="${cpaCls(ad.cpa)}" style="font-size:10px;font-weight:700;font-family:monospace">${fR(ad.cpa)}</div></div>
               <div><div style="font-size:7px;color:var(--muted2);text-transform:uppercase">CTR</div><div style="font-size:10px;font-weight:700;font-family:monospace">${fP(ad.ctr)}</div></div>
               <div><div style="font-size:7px;color:var(--muted2);text-transform:uppercase">Invest.</div><div style="font-size:10px;font-weight:700;font-family:monospace">${fR(ad.spend)}</div></div>
+${hasUtmData()?`              <div><div style="font-size:7px;color:var(--muted2);text-transform:uppercase">V.UTM</div><div style="font-size:10px;font-weight:700;font-family:monospace">${fN((_uad[normUtm(ad.n)]||{}).q||0)}</div></div>
+              <div><div style="font-size:7px;color:var(--muted2);text-transform:uppercase">CPA UTM</div><div style="font-size:10px;font-weight:700;font-family:monospace" class="${cpaCls(((_uad[normUtm(ad.n)]||{}).q||0)>0?r2(ad.spend/(_uad[normUtm(ad.n)]||{}).q):null)}">${(()=>{const q=(_uad[normUtm(ad.n)]||{}).q||0;return q>0?fR(r2(ad.spend/q)):'—';})()}</div></div>
+              <div><div style="font-size:7px;color:var(--muted2);text-transform:uppercase">ROAS UTM</div><div style="font-size:10px;font-weight:700;font-family:monospace" class="${roasCls(ad.spend>0&&(_uad[normUtm(ad.n)]||{}).v>0?r2((_uad[normUtm(ad.n)]||{}).v/ad.spend):null)}">${(()=>{const u=_uad[normUtm(ad.n)];const rr=ad.spend>0&&u&&u.v>0?r2(u.v/ad.spend):null;return rr!=null?rr.toFixed(2)+'x':'—';})()}</div></div>`:''}
             </div>
           </div>
         </div>`;
@@ -1516,6 +1646,7 @@ function toggleAdsetRow(campId,adsetName,campName,rowEl){
 function renderAds(ads){
   const el=document.getElementById('adsGrid');
   if(!ads?.length){el.innerHTML='<div style="color:var(--muted);font-size:12px;padding:8px">Sem criativos</div>';return;}
+  const _uad=utmSalesIdx().ad;
   el.innerHTML=ads.slice(0,24).map(ad=>{
     const img=ad.thumb?`<img src="${ad.thumb}" loading="lazy" onerror="this.parentElement.innerHTML='<div class=ad-img-ph>🖼️</div>'">`:'<div class="ad-img-ph">🖼️</div>';
     return `<div class="ad-card"><div class="ad-img">${img}</div>
@@ -1527,6 +1658,9 @@ function renderAds(ads){
           <div><div class="as-l">CPA</div><div class="as-v ${cpaCls(ad.cpa)}">${fR(ad.cpa)}</div></div>
           <div><div class="as-l">CTR</div><div class="as-v">${fP(ad.ctr)}</div></div>
           <div><div class="as-l">Invest.</div><div class="as-v">${fR(ad.spend)}</div></div>
+${hasUtmData()?`          <div><div class="as-l">V.UTM</div><div class="as-v">${fN((_uad[normUtm(ad.n)]||{}).q||0)}</div></div>
+          <div><div class="as-l">CPA UTM</div><div class="as-v ${cpaCls(((_uad[normUtm(ad.n)]||{}).q||0)>0?r2(ad.spend/(_uad[normUtm(ad.n)]||{}).q):null)}">${(()=>{const q=(_uad[normUtm(ad.n)]||{}).q||0;return q>0?fR(r2(ad.spend/q)):'—';})()}</div></div>
+          <div><div class="as-l">ROAS UTM</div><div class="as-v ${roasCls(ad.spend>0&&(_uad[normUtm(ad.n)]||{}).v>0?r2((_uad[normUtm(ad.n)]||{}).v/ad.spend):null)}">${(()=>{const u=_uad[normUtm(ad.n)];const rr=ad.spend>0&&u&&u.v>0?r2(u.v/ad.spend):null;return rr!=null?rr.toFixed(2)+'x':'—';})()}</div></div>`:''}
         </div>
       </div></div>`;
   }).join('');
@@ -1976,6 +2110,7 @@ function goPage(p,btn){
   if(btn) btn.classList.add('active');
   const titles={overview:'Overview',meta:'Meta Ads',diario:'Métricas Diárias',pesquisa:'Pesquisa'};
   document.getElementById('pageTitle').textContent=titles[p]||p;
+  updatePagoToggleVis(p);
   if(p==='overview') renderOverview();
   if(p==='meta')     renderMeta();
   if(p==='diario')   renderDiario();
