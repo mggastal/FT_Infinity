@@ -42,7 +42,7 @@ EXTRAS_LABEL     = "Fora do relatório"   # rótulo no card Vendas por SCK
 EXTRAS_ORIGEM    = "Orgânico"            # Pago | Orgânico (entra no gráfico de origem)
 
 CPA_BOM          = 20
-CPA_MEDIO        = 30
+CPA_MEDIO        = 30.8
 ROAS_BOM         = 0.5
 ROAS_MEDIO       = 0.33
 
