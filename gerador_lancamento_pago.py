@@ -32,6 +32,7 @@ SCK_SRC_PAGO     = ["fb","facebook","ig","instagram"]
 VALOR_FIXO       = 10
 MOEDA_SIMBOLO    = "$"             # símbolo exibido no dashboard (ex: "$", "US$", "R$")
 FONTE_LABEL      = "Hotmart"       # rótulo sob o KPI de Vendas
+NOTA_RECEITA     = "* Receita e ROAS: Compras (pixel Meta) × valor fixo por venda"
 USAR_IDIOMAS     = True            # True = botão PT/ES na topbar traduz o relatório
 IDIOMA_PADRAO    = "es"            # idioma inicial do relatório: "es" ou "pt"
 # Vendas extras (fora do relatório) — injetadas manualmente. Cada uma conta VALOR_FIXO.
@@ -40,10 +41,10 @@ VENDAS_EXTRAS    = [{"data":"12/07/2026","qtd":33}]
 EXTRAS_LABEL     = "Fora do relatório"   # rótulo no card Vendas por SCK
 EXTRAS_ORIGEM    = "Orgânico"            # Pago | Orgânico (entra no gráfico de origem)
 
-CPA_BOM          = 30
-CPA_MEDIO        = 40
-ROAS_BOM         = 1.0
-ROAS_MEDIO       = 0.6
+CPA_BOM          = 20
+CPA_MEDIO        = 30
+ROAS_BOM         = 0.5
+ROAS_MEDIO       = 0.33
 
 # Metas do funil — define cores (verde/amarelo/vermelho) nas taxas
 # Cada métrica: [valor_bom, valor_medio] — acima do bom = verde, entre = amarelo, abaixo = vermelho
@@ -58,8 +59,8 @@ TX_CK_MEDIO      = 20.0
 TX_CONV_BOM      = 7.0    # Taxa Conversão LP ≥ 7% → verde | 5-7% → amarelo | <5% → vermelho
 TX_CONV_MEDIO    = 5.0
 
-CPM_BOM          = 7.0    # CPM ≤ 7 → verde | 7-12 → amarelo | >12 → vermelho (menor = melhor)
-CPM_MEDIO        = 12.0
+CPM_BOM          = 15.0    # CPM ≤ 7 → verde | 7-12 → amarelo | >12 → vermelho (menor = melhor)
+CPM_MEDIO        = 25.0
 
 # ══════════════════════════════════════════════════════
 def sheet_url(t): return f"https://docs.google.com/spreadsheets/d/{SHEET_ID}/gviz/tq?tqx=out:csv&sheet={t}"
@@ -342,7 +343,7 @@ def meta_raw(df, ticket):
     for _,r in agg.iterrows():
         sp=float(r["spend"]); pur=int(r["purchase"]); imp=int(r["impressions"])
         lc=int(r["link_clicks"]); pv=int(r["page_view"]); ic=int(r["init_checkout"])
-        rev=float(r["revenue_meta"])
+        rev=pur*ticket  # SEMPRE compras × valor fixo
         rows.append({
             "d": r["date"].strftime("%d/%m"),
             "c": str(r["campaign"]),
@@ -358,7 +359,7 @@ def build_rows(agg, col, ticket):
     for _,r in agg.sort_values("purchase",ascending=False).iterrows():
         sp=float(r["spend"]); imp=float(r["impressions"]); lc=float(r["link_clicks"])
         pv=float(r["page_view"]); ic=float(r["init_checkout"]); pur=float(r["purchase"])
-        rev=float(r.get("revenue_meta",0) or pur*ticket)  # usa Action Value se disponível
+        rev=pur*ticket  # SEMPRE compras × valor fixo ($10) — ignora Action Value do Meta
         rows.append({"n":str(r[col]),"st":str(r.get("status","") or ""),"spend":round(sp,2),"imp":int(imp),"lc":int(lc),
             "pv":int(pv),"ic":int(ic),"pur":int(pur),"rev":round(rev,2),
             "ctr":round(lc/imp*100,2) if imp>0 else None,
@@ -388,7 +389,7 @@ def meta_tables_period(df, p, img_dir, ticket):
         for _,r in agg2.sort_values("purchase",ascending=False).iterrows():
             sp=float(r["spend"]); imp=float(r["impressions"]); lc=float(r["link_clicks"])
             pv=float(r["page_view"]); ic=float(r["init_checkout"]); pur=float(r["purchase"])
-            rev=float(r.get("revenue_meta",0) or pur*ticket)
+            rev=pur*ticket  # SEMPRE compras × valor fixo
             rows.append({"n":str(r["adset"]),"camp":str(r["campaign"]),"st":str(r.get("status","") or ""),"spend":round(sp,2),
                 "imp":int(imp),"lc":int(lc),"pv":int(pv),"ic":int(ic),"pur":int(pur),"rev":round(rev,2),
                 "ctr":round(lc/imp*100,2) if imp>0 else None,
@@ -607,6 +608,7 @@ def inject_all(tpl, meta_k, meta_d, meta_dc, meta_raw_c, meta_t, meta_bd, hot_k,
                 ("FUNIL_TITULO",f"'{FUNIL_TITULO}'"),
                 ("FUNIL_COMPRAS_PAGO","true" if FUNIL_COMPRAS_PAGO else "false"),
                 ("FONTE_LABEL",f"'{FONTE_LABEL}'"),
+                ("NOTA_RECEITA",f"'{NOTA_RECEITA}'"),
                 ("USAR_IDIOMAS","true" if USAR_IDIOMAS else "false"),
                 ("LANG_DEFAULT",f"'{IDIOMA_PADRAO}'"),
                 ("LOGO_LETRA",f"'{LOGO_LETRA}'"),("COR_ACENTO",f"'{COR_ACENTO}'"),
