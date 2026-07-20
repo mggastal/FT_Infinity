@@ -885,7 +885,7 @@ function utmSalesIdx(){
 }
 function metaSpendIdx(){
   // Invest. agregado por NOME (global, sem separar campanha) — respeita escopo e período/datas
-  const idx={camp:{},adset:{}};
+  const idx={camp:{},adset:{},ad:{}};
   if(!Array.isArray(META_RAW_CAMP)) return idx;
   const hoje=getHoje();
   META_RAW_CAMP.forEach(r=>{
@@ -895,9 +895,10 @@ function metaSpendIdx(){
       const ini=new Date(fim);ini.setDate(ini.getDate()-(periodDays===1?0:periodDays-1));ini.setHours(0,0,0,0);
       if(dt<ini||dt>fim) return;}
     if(dateI&&dt<dateI) return; if(dateF&&dt>dateF) return;
-    const ck=normUtm(r.c), ak=normUtm(r.a);
+    const ck=normUtm(r.c), ak=normUtm(r.a), nk=normUtm(r.an);
     if(ck) idx.camp[ck]=r2((idx.camp[ck]||0)+r.sp);
     if(ak) idx.adset[ak]=r2((idx.adset[ak]||0)+r.sp);
+    if(nk) idx.ad[nk]=r2((idx.ad[nk]||0)+r.sp);
   });
   return idx;
 }
@@ -1175,7 +1176,7 @@ function renderOverview(){
 // Tabelas de vendas por parâmetro UTM — cruzadas com Invest. do Meta (visão global, sem separar campanha)
 function renderUtmTables(rawF){
   const msIdx=metaSpendIdx();
-  const adIdx=adSpendIdx();   // null em datas customizadas
+  const adIdx=Object.keys(msIdx.ad).length?msIdx.ad:adSpendIdx();   // raw por anúncio; fallback tabelas (builds antigas)
   const dims=[
     {key:'of', titulo:'Código da Oferta', spend:null},
     {key:'uc', titulo:'utm_campaign',     spend:null},
