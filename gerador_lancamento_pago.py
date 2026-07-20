@@ -41,10 +41,10 @@ VENDAS_EXTRAS    = [{"data":"12/07/2026","qtd":33}]
 EXTRAS_LABEL     = "Fora do relatório"   # rótulo no card Vendas por SCK
 EXTRAS_ORIGEM    = "Orgânico"            # Pago | Orgânico (entra no gráfico de origem)
 
-CPA_BOM          = 20
-CPA_MEDIO        = 30.8
-ROAS_BOM         = 0.5
-ROAS_MEDIO       = 0.33
+CPA_BOM          = 30
+CPA_MEDIO        = 40
+ROAS_BOM         = 1.0
+ROAS_MEDIO       = 0.6
 
 # Metas do funil — define cores (verde/amarelo/vermelho) nas taxas
 # Cada métrica: [valor_bom, valor_medio] — acima do bom = verde, entre = amarelo, abaixo = vermelho
@@ -59,8 +59,8 @@ TX_CK_MEDIO      = 20.0
 TX_CONV_BOM      = 7.0    # Taxa Conversão LP ≥ 7% → verde | 5-7% → amarelo | <5% → vermelho
 TX_CONV_MEDIO    = 5.0
 
-CPM_BOM          = 50.0    # CPM ≤ 7 → verde | 7-12 → amarelo | >12 → vermelho (menor = melhor)
-CPM_MEDIO        = 80.0
+CPM_BOM          = 7.0    # CPM ≤ 7 → verde | 7-12 → amarelo | >12 → vermelho (menor = melhor)
+CPM_MEDIO        = 12.0
 
 # ══════════════════════════════════════════════════════
 def sheet_url(t): return f"https://docs.google.com/spreadsheets/d/{SHEET_ID}/gviz/tq?tqx=out:csv&sheet={t}"
@@ -334,7 +334,7 @@ def meta_daily_camps(df, ticket):
 def meta_raw(df, ticket):
     """Raw agregado por dia+campanha+adset — para filtro de datas livres nas tabelas"""
     rows=[]
-    agg=df.groupby(["date","campaign","adset","is_lct"]).agg(
+    agg=df.groupby(["date","campaign","adset","ad","is_lct"]).agg(
         spend=("spend","sum"), purchase=("purchase","sum"),
         impressions=("impressions","sum"), link_clicks=("link_clicks","sum"),
         page_view=("page_view","sum"), init_checkout=("init_checkout","sum"),
@@ -348,6 +348,7 @@ def meta_raw(df, ticket):
             "d": r["date"].strftime("%d/%m"),
             "c": str(r["campaign"]),
             "a": str(r["adset"]),
+            "an": str(r["ad"]),
             "lct": bool(r["is_lct"]),
             "sp": round(sp,2), "pur": pur, "imp": imp,
             "lc": lc, "pv": pv, "ic": ic, "rev": round(rev,2)
