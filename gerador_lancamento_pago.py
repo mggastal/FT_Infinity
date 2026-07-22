@@ -40,11 +40,15 @@ IDIOMA_PADRAO    = "es"            # idioma inicial do relatório: "es" ou "pt"
 VENDAS_EXTRAS    = [{"data":"12/07/2026","qtd":33}]
 EXTRAS_LABEL     = "Fora do relatório"   # rótulo no card Vendas por SCK
 EXTRAS_ORIGEM    = "Orgânico"            # Pago | Orgânico (entra no gráfico de origem)
+# Comparativo de especialistas/lados — casa tokens no nome da campanha (invest) e nos UTMs (vendas).
+# Ordem importa: o primeiro lado que casar vence. [] = painel oculto.
+LADOS_COMPARATIVO = [{"nome":"Vanessa","tokens":["VANESSA","VANE"]},
+                     {"nome":"Ana","tokens":["ANA"]}]
 
-CPA_BOM          = 30
-CPA_MEDIO        = 40
-ROAS_BOM         = 1.0
-ROAS_MEDIO       = 0.6
+CPA_BOM          = 14
+CPA_MEDIO        = 21
+ROAS_BOM         = 0.69
+ROAS_MEDIO       = 0.5
 
 # Metas do funil — define cores (verde/amarelo/vermelho) nas taxas
 # Cada métrica: [valor_bom, valor_medio] — acima do bom = verde, entre = amarelo, abaixo = vermelho
@@ -59,8 +63,8 @@ TX_CK_MEDIO      = 20.0
 TX_CONV_BOM      = 7.0    # Taxa Conversão LP ≥ 7% → verde | 5-7% → amarelo | <5% → vermelho
 TX_CONV_MEDIO    = 5.0
 
-CPM_BOM          = 7.0    # CPM ≤ 7 → verde | 7-12 → amarelo | >12 → vermelho (menor = melhor)
-CPM_MEDIO        = 12.0
+CPM_BOM          = 40.0    # CPM ≤ 7 → verde | 7-12 → amarelo | >12 → vermelho (menor = melhor)
+CPM_MEDIO        = 60.0
 
 # ══════════════════════════════════════════════════════
 def sheet_url(t): return f"https://docs.google.com/spreadsheets/d/{SHEET_ID}/gviz/tq?tqx=out:csv&sheet={t}"
@@ -637,6 +641,7 @@ def inject_all(tpl, meta_k, meta_d, meta_dc, meta_raw_c, meta_t, meta_bd, hot_k,
     html=replace_js_const(html,"HOT_DAILY",    hot_d)
     html=replace_js_const(html,"HOT_RAW",      hot_raw)
     html=replace_js_const(html,"REGIAO_RAW",   regiao_raw)
+    html=replace_js_const(html,"LADOS",        LADOS_COMPARATIVO if LADOS_COMPARATIVO else None)
     html=replace_js_const(html,"PESQUISA", pes if USAR_PESQUISA else False)
     html=replace_js_const(html,"TICKET_MEDIO", ticket)
     # Data de geração em Brasília (UTC-3) para o filtro de período correto
