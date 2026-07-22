@@ -364,6 +364,11 @@ td.g-utm,th.g-utm{background:rgba(217,119,6,.06);}
           <div class="cc-s" id="ccPaisSub">vendas Hotmart × investimento Meta por país</div>
           <div id="tPais" style="overflow-x:auto"></div>
         </div>
+        <div class="cc" id="cardLados" style="display:none">
+          <div class="cc-t">Vendas por Destino (apenas Tráfego Pago)</div>
+          <div class="cc-s" id="ccLadosSub">investimento × vendas pagas por destino</div>
+          <div id="tLados" style="overflow-x:auto"></div>
+        </div>
       </div>
     </div>
 
@@ -464,6 +469,7 @@ const HOT_KPIS     = null;
 const HOT_DAILY     = null;
 const HOT_RAW     = null;
 const REGIAO_RAW    = null;
+const LADOS         = null;
 const PESQUISA     = null;
 const TICKET_MEDIO     = null;
 
@@ -541,8 +547,14 @@ const I18N={
   'Fat. (V. Pagas)':'Fact. (V. Pagas)','Fat. (V. Orgânicas)':'Fact. (V. Orgánicas)','Fat. Total':'Fact. Total',
   'CPA (Pago)':'CPA (Pago)','CPA (Orgânico)':'CPA (Orgánico)','CPA Total':'CPA Total',
   'ROAS Pago':'ROAS Pago','ROAS Orgânico':'ROAS Orgánico','ROAS Total':'ROAS Total',
-  'Em análise':'En análisis',
-  'Invest. = Meta por país (breakdown região) · Pago/Orgânico pelo código de oferta · "Em análise" = vendas ainda sem país preenchido · painel independe do filtro Tráfego Pago':'Inversión = Meta por país (breakdown región) · Pago/Orgánico por código de oferta · "En análisis" = ventas aún sin país · panel independiente del filtro Tráfico Pago',
+  'Em análise':'En análisis','Lado':'Lado','Destino':'Destino',
+  'País não encontrado':'País no encontrado','Destino não identificado':'Destino no identificado',
+  'Vendas por Destino (apenas Tráfego Pago)':'Ventas por Destino (solo Tráfico Pago)',
+  'Somente vendas de tráfego pago (código de oferta) · destino pelo nome da campanha (invest.) e pelos UTMs (vendas) · "Destino não identificado" = venda paga sem UTM legível (SCK vazio ou macro)':'Solo ventas de tráfico pago (código de oferta) · destino por nombre de campaña (inversión) y por UTMs (ventas) · "Destino no identificado" = venta paga sin UTM legible (SCK vacío o macro)',
+  '"País não encontrado" = vendas sem país na planilha (ex.: fora do relatório) · painel independe do filtro Tráfego Pago':'"País no encontrado" = ventas sin país en la planilla (ej.: fuera del informe) · panel independiente del filtro Tráfico Pago',
+  'vendas e investimento por especialista · mesma análise do painel de países':'ventas e inversión por especialista · mismo análisis del panel de países',
+  'Invest. pelo nome da campanha · vendas pelos UTMs (qualquer parâmetro que identifique o lado) · "Em análise" = sem identificação · independe do filtro Tráfego Pago':'Inversión por nombre de campaña · ventas por UTMs (cualquier parámetro que identifique el lado) · "En análisis" = sin identificación · independiente del filtro Tráfico Pago',
+  'Invest. = Meta por país (breakdown região) · Pago/Orgânico pelo código de oferta · "País não encontrado" = vendas sem país na planilha (ex.: fora do relatório) · painel independe do filtro Tráfego Pago':'Inversión = Meta por país (breakdown región) · Pago/Orgánico por código de oferta · "En análisis" = ventas aún sin país · panel independiente del filtro Tráfico Pago',
   'V. Pagas':'V. Pagas','V. Orgânicas':'V. Orgánicas',
   'CPA e ROAS por país: invest ÷ vendas pagas (código de oferta) · países sem anúncio ativos mostram "—"':'CPA y ROAS por país: inversión ÷ ventas pagas (código de oferta) · países sin anuncios activos muestran "—"',
   '** Grupo UTM (Hotmart): vendas atribuídas por UTM (campanha=utm_term · conjunto=utm_medium · anúncio=utm_content) · Receita = vendas × valor fixo':'** Grupo UTM (Hotmart): ventas atribuidas por UTM (campaña=utm_term · conjunto=utm_medium · anuncio=utm_content) · Ingresos = ventas × valor fijo',
@@ -557,6 +569,7 @@ const I18N_RX=[
   [/^Vendas Diárias \((.+)\) & Investimento$/,'Ventas Diarias ($1) & Inversión'],
   [/^Vendas (\S+)$/,'Ventas $1'],
   [/^(.+) · só tráfego pago$/,'$1 · solo tráfico pago'],
+  [/^(.+) · só vendas de tráfego pago \(código de oferta\)$/,'$1 · solo ventas de tráfico pago (código de oferta)'],
   [/^(.+) \/ Invest\.$/,'$1 / Invers.'],
   [/^Invest\. \/ vendas (.+)$/,'Invers. / ventas $1'],
 ];
@@ -1149,6 +1162,7 @@ function renderOverview(){
 
     // ── Painel Vendas por País (vendas Hotmart × invest Meta) ──
     renderPaisPanel();
+    renderLadosPanel();
 
     // Card dinâmico: "Vendas por SCK" se o raw tiver SCK, senão "Vendas por Produto"
     const temSck=rawF.some(r=>r.sck);
@@ -1262,8 +1276,8 @@ function renderPaisPanel(){
       ${th('ROAS Pago')}${th('ROAS Total')}
     </tr></thead>
     <tbody>${rows.map(b=>{
-      const nome=b.ps==='__NA__'?'Em análise':(PAIS_NOME[b.ps]||b.ps);
-      const lbl=b.ps==='__NA__'?'Em análise':(PAIS_NOME[b.ps]?(b.ps+' · '+nome):b.ps);
+      const nome=b.ps==='__NA__'?'País não encontrado':(PAIS_NOME[b.ps]||b.ps);
+      const lbl=b.ps==='__NA__'?'País não encontrado':(PAIS_NOME[b.ps]?(b.ps+' · '+nome):b.ps);
       return `<tr>
         <td style="font-size:10px;padding:5px 9px;border-bottom:1px solid var(--border);white-space:nowrap;font-weight:600" title="${nome}">${lbl}</td>
         <td style="${mono}">${b.sp!=null?fR(b.sp):'—'}</td>
@@ -1289,6 +1303,88 @@ function renderPaisPanel(){
         c(fx(roasP),roasCls(roasP))+c(fx(roasT),roasCls(roasT));
     })()}</tr>
     <tr><td colspan="9" style="padding:4px 9px;font-size:9px;color:var(--muted2)">Invest. = Meta por país (breakdown região) · Pago/Orgânico pelo código de oferta · "Em análise" = vendas ainda sem país preenchido · painel independe do filtro Tráfego Pago</td></tr></tfoot>
+  </table>`;
+}
+
+function ladoDe(texto){
+  // devolve o índice do lado cujo token casa primeiro (ordem do config), ou -1
+  const t=(texto||'').toString().toUpperCase();
+  if(!t) return -1;
+  for(let i=0;i<LADOS.length;i++){
+    if(LADOS[i].tokens.some(tk=>t.includes(tk.toUpperCase()))) return i;
+  }
+  return -1;
+}
+function renderLadosPanel(){
+  const card=document.getElementById('cardLados'); if(!card) return;
+  if(!Array.isArray(LADOS)||LADOS.length<2){card.style.display='none';return;}
+  card.style.display='';
+  const sub=document.getElementById('ccLadosSub');
+  if(sub) sub.textContent=LADOS.map(l=>l.nome).join(' × ')+' · só vendas de tráfego pago (código de oferta)';
+  const hoje=getHoje();
+  const inPeriodo=d=>{
+    const dt=parseDayStr(d);
+    if(periodDays>0){const fim=new Date(hoje);if(periodDays===1)fim.setDate(fim.getDate()-1);fim.setHours(23,59,59);
+      const ini=new Date(fim);ini.setDate(ini.getDate()-(periodDays===1?0:periodDays-1));ini.setHours(0,0,0,0);
+      if(dt<ini||dt>fim) return false;}
+    if(dateI&&dt<dateI) return false; if(dateF&&dt>dateF) return false;
+    return true;
+  };
+  // Invest por destino (nome da campanha)
+  const sp=LADOS.map(()=>0); let spNA=0, temSp=false;
+  if(Array.isArray(META_RAW_CAMP)) META_RAW_CAMP.forEach(r=>{
+    if(filtroLct&&!r.lct) return;
+    if(!inPeriodo(r.d)) return;
+    temSp=true;
+    const li=ladoDe(r.c);
+    if(li>=0) sp[li]=r2(sp[li]+r.sp); else spNA=r2(spNA+r.sp);
+  });
+  // Vendas: SÓ tráfego pago
+  const tk=HOT_KPIS?.ticket_medio||0;
+  const rows=LADOS.map((l,i)=>({nome:l.nome,sp:sp[i],qtd:0}));
+  const na={nome:'Destino não identificado',sp:spNA>0?spNA:null,qtd:0};
+  (HOT_RAW||[]).forEach(r=>{
+    if(!isPagoRow(r)) return;
+    if(!inPeriodo(r.d)) return;
+    const li=ladoDe([r.ut,r.um,r.uco,r.uc,r.us].join(' '));
+    (li>=0?rows[li]:na).qtd++;
+  });
+  const all=[...rows, ...((na.qtd>0||na.sp)?[na]:[])];
+  const fx=v=>v!=null?v.toFixed(2)+'x':'—';
+  all.forEach(b=>{
+    b.fat=r2(b.qtd*tk);
+    const s=(b.sp!=null&&b.sp>0)?b.sp:null;
+    b.cpa=(s&&b.qtd>0)?r2(s/b.qtd):null;
+    b.roas=(s&&b.fat>0)?r2(b.fat/s):null;
+  });
+  const el=document.getElementById('tLados');
+  const th=(l,c)=>`<th style="font-size:8px;text-transform:uppercase;letter-spacing:.6px;color:${c||'var(--muted)'};font-weight:700;padding:5px 9px;text-align:right;white-space:nowrap">${l}</th>`;
+  const mono='font-size:10px;text-align:right;padding:5px 9px;font-family:monospace;border-bottom:1px solid var(--border);white-space:nowrap';
+  el.innerHTML=`<table style="width:100%;border-collapse:collapse;min-width:560px">
+    <thead><tr style="background:var(--surface2)">
+      <th style="font-size:8px;text-transform:uppercase;letter-spacing:.6px;color:var(--muted);font-weight:700;padding:5px 9px;text-align:left">Destino</th>
+      ${th('Invest.')}${th('Vendas')}${th('Fat.','#059669')}${th('CPA')}${th('ROAS')}
+    </tr></thead>
+    <tbody>${all.map(b=>`<tr>
+        <td style="font-size:10px;padding:5px 9px;border-bottom:1px solid var(--border);white-space:nowrap;font-weight:700">${b.nome}</td>
+        <td style="${mono}">${b.sp!=null?fR(b.sp):'—'}</td>
+        <td style="${mono};font-weight:700">${fN(b.qtd)}</td>
+        <td style="${mono};color:#059669">${fR(b.fat)}</td>
+        <td class="${cpaCls(b.cpa)}" style="${mono}">${b.cpa!=null?fR(b.cpa):'—'}</td>
+        <td class="${roasCls(b.roas)}" style="${mono}">${fx(b.roas)}</td>
+      </tr>`).join('')}</tbody>
+    <tfoot><tr style="background:var(--surface2);font-weight:700;border-top:2px solid var(--border)">${(()=>{
+      const t={sp:0,qtd:0,temSp:false};
+      all.forEach(b=>{if(b.sp!=null){t.sp=r2(t.sp+b.sp);t.temSp=true;}t.qtd+=b.qtd;});
+      const fat=r2(t.qtd*tk);
+      const cpa=t.temSp&&t.qtd>0?r2(t.sp/t.qtd):null;
+      const roas=t.temSp&&t.sp>0&&fat>0?r2(fat/t.sp):null;
+      const c=(txt,cls='')=>`<td class="num ${cls}" style="font-size:10px;text-align:right;padding:7px 9px;font-family:monospace;white-space:nowrap">${txt}</td>`;
+      return `<td style="font-size:9px;padding:7px 9px;font-weight:700;color:var(--muted2);text-transform:uppercase">Total</td>`+
+        c(t.temSp?fR(t.sp):'—')+c(fN(t.qtd))+c(fR(fat))+
+        c(cpa!=null?fR(cpa):'—',cpaCls(cpa))+c(fx(roas),roasCls(roas));
+    })()}</tr>
+    <tr><td colspan="6" style="padding:4px 9px;font-size:9px;color:var(--muted2)">Somente vendas de tráfego pago (código de oferta) · destino pelo nome da campanha (invest.) e pelos UTMs (vendas) · "Destino não identificado" = venda paga sem UTM legível (SCK vazio ou macro)</td></tr></tfoot>
   </table>`;
 }
 
