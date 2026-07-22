@@ -69,6 +69,7 @@ URL_HOT  = sheet_url("hotmart")
 URL_PES  = sheet_url("Pesquisa")
 URL_GA   = sheet_url("breakdown-gender-age")
 URL_PT   = sheet_url("breakdown-platform")
+URL_RG   = sheet_url("breakdown-regiao")
 
 def to_num(s):
     """Converte série para numérico — detecta formato BR (1.234,56) ou US (1234.56)"""
@@ -95,6 +96,21 @@ def download_thumb(url, d):
             else: return ""
         return "imgs/"+fname
     except: return ""
+
+# ── País: mapa nome (Hotmart) → código 2 letras (igual ao breakdown-regiao) ──
+import unicodedata as _ud
+def _norm_pais(s):
+    return _ud.normalize("NFKD",str(s or "")).encode("ascii","ignore").decode().lower().strip()
+PAIS_2L = {"colombia":"CO","mexico":"MX","estados unidos":"US","estados unidos de america":"US",
+    "peru":"PE","ecuador":"EC","chile":"CL","argentina":"AR","costa rica":"CR","portugal":"PT",
+    "guatemala":"GT","espana":"ES","republica dominicana":"DO","puerto rico":"PR","canada":"CA",
+    "suiza":"CH","honduras":"HN","brasil":"BR","brazil":"BR","bolivia":"BO","uruguay":"UY",
+    "paraguay":"PY","venezuela":"VE","panama":"PA","nicaragua":"NI","el salvador":"SV","italia":"IT",
+    "francia":"FR","alemania":"DE","reino unido":"GB","australia":"AU","japon":"JP"}
+def pais_code(nome):
+    n=_norm_pais(nome)
+    if not n or n=="nan": return ""
+    return PAIS_2L.get(n, str(nome).strip().upper()[:14])
 
 # ══ HOTMART + SCK (carrega primeiro para ter ticket_medio) ══
 import html as _html, urllib.parse as _up
@@ -163,6 +179,9 @@ def load_hotmart():
     # ── ORIGEM pelo código da oferta (fonte da verdade) ──
     pago_set = {c.strip().lower() for c in OFERTAS_PAGO}
     df["oferta"] = g_on(df,col,"Offer Code").astype(str).str.strip().str.lower().replace({"nan":""})
+    # País do comprador (coluna "País")
+    pais_col = next((c for c in df.columns if _norm_pais(c) in ("pais","country","pais do comprador")), None)
+    df["pais"] = df[pais_col].apply(pais_code) if pais_col else ""
     df["origem_sck"] = df["oferta"].isin(pago_set).map({True:"Pago",False:"Orgânico"})
     df["Organico ou Pago"] = df["origem_sck"]
     df["sck_label"] = df.apply(lambda r: (str(r["src"]).upper()+" · "+str(r["med"])) if r["src"] else "Direto / Não rastreado", axis=1)
@@ -177,7 +196,7 @@ def load_hotmart():
         for _ in range(int(e.get("qtd",0))):
             extra_rows.append({"date":d.normalize(),"valor":val_extra,
                 "Produto":(PRODUTOS_HOTMART[0] if PRODUTOS_HOTMART and PRODUTOS_HOTMART!=["ALL"] else "Acceso VIP"),
-                "src":"","med":"","camp_sck":"","u_content":"","u_term":"","oferta":"",
+                "src":"","med":"","camp_sck":"","u_content":"","u_term":"","oferta":"","pais":"",
                 "Organico ou Pago":EXTRAS_ORIGEM,"origem_sck":EXTRAS_ORIGEM,"sck_label":EXTRAS_LABEL})
     if extra_rows:
         df = pd.concat([df, pd.DataFrame(extra_rows)], ignore_index=True)
@@ -250,7 +269,8 @@ def hotmart_process(df):
             "uc": str(r.get("camp_sck","")),
             "uco": str(r.get("u_content","")),
             "ut": str(r.get("u_term","")),
-            "of": str(r.get("oferta",""))
+            "of": str(r.get("oferta","")),
+            "ps": str(r.get("pais",""))
         })
     return kpis, daily, raw
 
@@ -528,6 +548,28 @@ def meta_breakdowns(df):
     result['_camps']=camps_bd
     return result
 
+# ══ REGIÃO (spend por país) ═══════════════════════════
+def load_regiao():
+    """Lê breakdown-regiao (país 2L) e exporta raw diário {d, ps, lct, sp, pur}."""
+    print("  Lendo breakdown-regiao...")
+    try:
+        df=pd.read_csv(URL_RG)
+        df.columns=[str(c).strip() for c in df.columns]
+        df["date"]=pd.to_datetime(df["Date"],errors="coerce")
+        df=df.dropna(subset=["date"])
+        df["ps"]=df["Country (Breakdown)"].astype(str).str.strip().str.upper()
+        df["sp"]=to_num(df["Spend (Cost, Amount Spent)"])
+        df["pur"]=to_num(df.get("Action Omni Purchase",0))
+        camp_col=next((c for c in df.columns if "campaign" in c.lower()),None)
+        df["is_lct"]=df[camp_col].astype(str).str.contains(LANCAMENTO_COD,na=False,case=False) if (camp_col and LANCAMENTO_COD) else True
+        agg=df.groupby([df["date"].dt.normalize(),"ps","is_lct"]).agg(sp=("sp","sum"),pur=("pur","sum")).reset_index()
+        rows=[{"d":r["date"].strftime("%d/%m"),"ps":str(r["ps"]),"lct":bool(r["is_lct"]),
+               "sp":round(float(r["sp"]),2),"pur":int(r["pur"])} for _,r in agg.iterrows()]
+        print(f"     {len(rows)} linhas | países: {sorted(set(r['ps'] for r in rows if r['lct']))}")
+        return rows
+    except Exception as e:
+        print(f"  Aviso regiao: {e}"); return []
+
 # ══ PESQUISA ══════════════════════════════════════════
 def load_pesquisa():
     print("  Lendo pesquisa..."); return pd.read_csv(URL_PES)
@@ -583,7 +625,7 @@ def replace_js_const(html, name, value):
     if not found[0]: print(f"  AVISO: não encontrou const {name}")
     return new_html
 
-def inject_all(tpl, meta_k, meta_d, meta_dc, meta_raw_c, meta_t, meta_bd, hot_k, hot_d, hot_raw, pes, ticket):
+def inject_all(tpl, meta_k, meta_d, meta_dc, meta_raw_c, meta_t, meta_bd, hot_k, hot_d, hot_raw, regiao_raw, pes, ticket):
     html=Path(tpl).read_text(encoding="utf-8")
     html=replace_js_const(html,"META_KPIS",    meta_k)
     html=replace_js_const(html,"META_DAILY",       meta_d)
@@ -594,6 +636,7 @@ def inject_all(tpl, meta_k, meta_d, meta_dc, meta_raw_c, meta_t, meta_bd, hot_k,
     html=replace_js_const(html,"HOT_KPIS",     hot_k)
     html=replace_js_const(html,"HOT_DAILY",    hot_d)
     html=replace_js_const(html,"HOT_RAW",      hot_raw)
+    html=replace_js_const(html,"REGIAO_RAW",   regiao_raw)
     html=replace_js_const(html,"PESQUISA", pes if USAR_PESQUISA else False)
     html=replace_js_const(html,"TICKET_MEDIO", ticket)
     # Data de geração em Brasília (UTC-3) para o filtro de período correto
@@ -656,7 +699,8 @@ def main():
     print("\n[HTML]")
     if not Path(TEMPLATE_FILE).exists():
         print(f"  ERRO: {TEMPLATE_FILE} não encontrado"); return
-    html=inject_all(TEMPLATE_FILE,m_k,m_d,m_dc,m_raw,m_t,m_bd,hot_k,hot_d,h_raw,pes,ticket)
+    regiao_raw=load_regiao()
+    html=inject_all(TEMPLATE_FILE,m_k,m_d,m_dc,m_raw,m_t,m_bd,hot_k,hot_d,h_raw,regiao_raw,pes,ticket)
     Path(OUTPUT_FILE).write_text(html,encoding="utf-8")
     print(f"  ✓ {OUTPUT_FILE} ({len(html)//1024}KB)")
 
