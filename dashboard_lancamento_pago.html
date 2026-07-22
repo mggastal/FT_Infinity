@@ -359,6 +359,11 @@ td.g-utm,th.g-utm{background:rgba(217,119,6,.06);}
           <div class="cc-s" id="ccProdutoSub">por origem</div>
           <div id="tPorProduto"></div>
         </div>
+        <div class="cc" id="cardPais" style="display:none">
+          <div class="cc-t">Vendas por País</div>
+          <div class="cc-s" id="ccPaisSub">vendas Hotmart × investimento Meta por país</div>
+          <div id="tPais" style="overflow-x:auto"></div>
+        </div>
       </div>
     </div>
 
@@ -458,6 +463,7 @@ const META_BD     = null;
 const HOT_KPIS     = null;
 const HOT_DAILY     = null;
 const HOT_RAW     = null;
+const REGIAO_RAW    = null;
 const PESQUISA     = null;
 const TICKET_MEDIO     = null;
 
@@ -531,6 +537,14 @@ const I18N={
   '+ Impr · Cliques · PV · Init CK':'+ Impr · Clics · PV · Init CK',
   'Meta Ads (gerenciador)':'Meta Ads (administrador)','UTM (Hotmart)':'UTM (Hotmart)',
   'Taxa Conversão (PV→Compra Hotmart) %':'Tasa Conversión (PV→Compra Hotmart) %',
+  'Vendas por País':'Ventas por País','vendas Hotmart × investimento Meta por país':'ventas Hotmart × inversión Meta por país',
+  'Fat. (V. Pagas)':'Fact. (V. Pagas)','Fat. (V. Orgânicas)':'Fact. (V. Orgánicas)','Fat. Total':'Fact. Total',
+  'CPA (Pago)':'CPA (Pago)','CPA (Orgânico)':'CPA (Orgánico)','CPA Total':'CPA Total',
+  'ROAS Pago':'ROAS Pago','ROAS Orgânico':'ROAS Orgánico','ROAS Total':'ROAS Total',
+  'Em análise':'En análisis',
+  'Invest. = Meta por país (breakdown região) · Pago/Orgânico pelo código de oferta · "Em análise" = vendas ainda sem país preenchido · painel independe do filtro Tráfego Pago':'Inversión = Meta por país (breakdown región) · Pago/Orgánico por código de oferta · "En análisis" = ventas aún sin país · panel independiente del filtro Tráfico Pago',
+  'V. Pagas':'V. Pagas','V. Orgânicas':'V. Orgánicas',
+  'CPA e ROAS por país: invest ÷ vendas pagas (código de oferta) · países sem anúncio ativos mostram "—"':'CPA y ROAS por país: inversión ÷ ventas pagas (código de oferta) · países sin anuncios activos muestran "—"',
   '** Grupo UTM (Hotmart): vendas atribuídas por UTM (campanha=utm_term · conjunto=utm_medium · anúncio=utm_content) · Receita = vendas × valor fixo':'** Grupo UTM (Hotmart): ventas atribuidas por UTM (campaña=utm_term · conjunto=utm_medium · anuncio=utm_content) · Ingresos = ventas × valor fijo',
   '* Receita e ROAS: Compras (pixel Meta) × valor fixo por venda':'* Ingresos y ROAS: Compras (píxel Meta) × valor fijo por venta',
   '** V.UTM / ROAS UTM: vendas Hotmart atribuídas por UTM (campanha=utm_term · conjunto=utm_medium · anúncio=utm_content)':'** V.UTM / ROAS UTM: ventas Hotmart atribuidas por UTM (campaña=utm_term · conjunto=utm_medium · anuncio=utm_content)',
@@ -1133,6 +1147,9 @@ function renderOverview(){
       }}
     });
 
+    // ── Painel Vendas por País (vendas Hotmart × invest Meta) ──
+    renderPaisPanel();
+
     // Card dinâmico: "Vendas por SCK" se o raw tiver SCK, senão "Vendas por Produto"
     const temSck=rawF.some(r=>r.sck);
     const tituloCard=document.querySelector('#cardProduto .cc-t')||document.getElementById('ccProdutoTitle');
@@ -1171,6 +1188,108 @@ function renderOverview(){
       }
     }
   }
+}
+
+const PAIS_NOME={CO:'Colombia',MX:'México',US:'Estados Unidos',PE:'Perú',EC:'Ecuador',CL:'Chile',AR:'Argentina',
+  CR:'Costa Rica',PT:'Portugal',GT:'Guatemala',ES:'España',DO:'Rep. Dominicana',PR:'Puerto Rico',CA:'Canadá',
+  CH:'Suiza',HN:'Honduras',BR:'Brasil',BO:'Bolivia',UY:'Uruguay',PY:'Paraguay',VE:'Venezuela',PA:'Panamá'};
+function regiaoSpendIdx(){
+  // Invest. por país (2L) — respeita escopo lct, período e datas customizadas
+  const idx={};
+  if(!Array.isArray(REGIAO_RAW)) return idx;
+  const hoje=getHoje();
+  REGIAO_RAW.forEach(r=>{
+    if(filtroLct&&!r.lct) return;
+    const dt=parseDayStr(r.d);
+    if(periodDays>0){const fim=new Date(hoje);if(periodDays===1)fim.setDate(fim.getDate()-1);fim.setHours(23,59,59);
+      const ini=new Date(fim);ini.setDate(ini.getDate()-(periodDays===1?0:periodDays-1));ini.setHours(0,0,0,0);
+      if(dt<ini||dt>fim) return;}
+    if(dateI&&dt<dateI) return; if(dateF&&dt>dateF) return;
+    idx[r.ps]=r2((idx[r.ps]||0)+r.sp);
+  });
+  return idx;
+}
+function renderPaisPanel(){
+  const card=document.getElementById('cardPais'); if(!card) return;
+  const temPais=(HOT_RAW||[]).some(r=>r.ps)||(Array.isArray(REGIAO_RAW)&&REGIAO_RAW.length>0);
+  if(!temPais){card.style.display='none';return;}
+  card.style.display='';
+  // Base própria: período + datas custom, SEM o filtro Tráfego Pago (painel mostra tudo sempre)
+  const hoje=getHoje();
+  const base=(HOT_RAW||[]).filter(r=>{
+    const dt=parseDayStr(r.d);
+    if(periodDays>0){const fim=new Date(hoje);if(periodDays===1)fim.setDate(fim.getDate()-1);fim.setHours(23,59,59);
+      const ini=new Date(fim);ini.setDate(ini.getDate()-(periodDays===1?0:periodDays-1));ini.setHours(0,0,0,0);
+      if(dt<ini||dt>fim) return false;}
+    if(dateI&&dt<dateI) return false; if(dateF&&dt>dateF) return false;
+    return true;
+  });
+  const spIdx=regiaoSpendIdx();
+  const tk=HOT_KPIS?.ticket_medio||0;
+  const map={};
+  base.forEach(r=>{
+    const k=(r.ps||'').trim()||'__NA__';   // sem país → "Em análise" (alimentado manualmente)
+    const b=map[k]=map[k]||{ps:k,pago:0,org:0};
+    if((r.org||'').includes('Pago')) b.pago++; else b.org++;
+  });
+  Object.keys(spIdx).forEach(k=>{ if(!map[k]) map[k]={ps:k,pago:0,org:0}; });
+  const fx=v=>v!=null?v.toFixed(2)+'x':'—';
+  const rows=Object.values(map).map(b=>{
+    b.total=b.pago+b.org;
+    b.sp=spIdx[b.ps]!=null?spIdx[b.ps]:null;
+    b.fatP=r2(b.pago*tk); b.fatO=r2(b.org*tk); b.fatT=r2(b.total*tk);
+    b.cpaP=(b.sp!=null&&b.pago>0)?r2(b.sp/b.pago):null;
+    b.cpaO=(b.sp!=null&&b.org>0)?r2(b.sp/b.org):null;
+    b.cpaT=(b.sp!=null&&b.total>0)?r2(b.sp/b.total):null;
+    b.roasP=(b.sp>0&&b.fatP>0)?r2(b.fatP/b.sp):null;
+    b.roasO=(b.sp>0&&b.fatO>0)?r2(b.fatO/b.sp):null;
+    b.roasT=(b.sp>0&&b.fatT>0)?r2(b.fatT/b.sp):null;
+    return b;
+  }).sort((a,b)=>{
+    if(a.ps==='__NA__') return 1; if(b.ps==='__NA__') return -1;
+    return b.total-a.total||((b.sp||0)-(a.sp||0));
+  });
+  const el=document.getElementById('tPais');
+  const th=(l,c)=>`<th style="font-size:8px;text-transform:uppercase;letter-spacing:.6px;color:${c||'var(--muted)'};font-weight:700;padding:5px 9px;text-align:right;white-space:nowrap">${l}</th>`;
+  const mono='font-size:10px;text-align:right;padding:5px 9px;font-family:monospace;border-bottom:1px solid var(--border);white-space:nowrap';
+  const fatCell=(v,n,color)=>`<td style="${mono}${color?';color:'+color:''}">${fR(v)} <span style="color:var(--muted2);font-size:9px">(${fN(n)})</span></td>`;
+  el.innerHTML=`<table style="width:100%;border-collapse:collapse;min-width:760px">
+    <thead><tr style="background:var(--surface2)">
+      <th style="font-size:8px;text-transform:uppercase;letter-spacing:.6px;color:var(--muted);font-weight:700;padding:5px 9px;text-align:left">País</th>
+      ${th('Invest.')}
+      ${th('Fat. (V. Pagas)','#059669')}${th('Fat. (V. Orgânicas)','#059669')}${th('Fat. Total','#059669')}
+      ${th('CPA (Pago)')}${th('CPA Total')}
+      ${th('ROAS Pago')}${th('ROAS Total')}
+    </tr></thead>
+    <tbody>${rows.map(b=>{
+      const nome=b.ps==='__NA__'?'Em análise':(PAIS_NOME[b.ps]||b.ps);
+      const lbl=b.ps==='__NA__'?'Em análise':(PAIS_NOME[b.ps]?(b.ps+' · '+nome):b.ps);
+      return `<tr>
+        <td style="font-size:10px;padding:5px 9px;border-bottom:1px solid var(--border);white-space:nowrap;font-weight:600" title="${nome}">${lbl}</td>
+        <td style="${mono}">${b.sp!=null?fR(b.sp):'—'}</td>
+        ${fatCell(b.fatP,b.pago,'#059669')}${fatCell(b.fatO,b.org)}${fatCell(b.fatT,b.total,'#059669')}
+        <td class="${cpaCls(b.cpaP)}" style="${mono}">${b.cpaP!=null?fR(b.cpaP):'—'}</td>
+        <td class="${cpaCls(b.cpaT)}" style="${mono}">${b.cpaT!=null?fR(b.cpaT):'—'}</td>
+        <td class="${roasCls(b.roasP)}" style="${mono}">${fx(b.roasP)}</td>
+        <td class="${roasCls(b.roasT)}" style="${mono}">${fx(b.roasT)}</td>
+      </tr>`;}).join('')}</tbody>
+    <tfoot><tr style="background:var(--surface2);font-weight:700;border-top:2px solid var(--border)">${(()=>{
+      const t={sp:0,pago:0,org:0,temSp:false};
+      rows.forEach(b=>{if(b.sp!=null){t.sp=r2(t.sp+b.sp);t.temSp=true;}t.pago+=b.pago;t.org+=b.org;});
+      const tot=t.pago+t.org, fatP=r2(t.pago*tk), fatO=r2(t.org*tk), fatT=r2(tot*tk);
+      const cpaP=t.temSp&&t.pago>0?r2(t.sp/t.pago):null, cpaT=t.temSp&&tot>0?r2(t.sp/tot):null;
+      const roasP=t.temSp&&t.sp>0&&fatP>0?r2(fatP/t.sp):null, roasT=t.temSp&&t.sp>0&&fatT>0?r2(fatT/t.sp):null;
+      const c=(txt,cls='')=>`<td class="num ${cls}" style="font-size:10px;text-align:right;padding:7px 9px;font-family:monospace;white-space:nowrap">${txt}</td>`;
+      return `<td style="font-size:9px;padding:7px 9px;font-weight:700;color:var(--muted2);text-transform:uppercase">Total</td>`+
+        c(t.temSp?fR(t.sp):'—')+
+        c(fR(fatP)+' <span style="color:var(--muted2);font-size:9px">('+fN(t.pago)+')</span>')+
+        c(fR(fatO)+' <span style="color:var(--muted2);font-size:9px">('+fN(t.org)+')</span>')+
+        c(fR(fatT)+' <span style="color:var(--muted2);font-size:9px">('+fN(tot)+')</span>')+
+        c(cpaP!=null?fR(cpaP):'—',cpaCls(cpaP))+c(cpaT!=null?fR(cpaT):'—',cpaCls(cpaT))+
+        c(fx(roasP),roasCls(roasP))+c(fx(roasT),roasCls(roasT));
+    })()}</tr>
+    <tr><td colspan="9" style="padding:4px 9px;font-size:9px;color:var(--muted2)">Invest. = Meta por país (breakdown região) · Pago/Orgânico pelo código de oferta · "Em análise" = vendas ainda sem país preenchido · painel independe do filtro Tráfego Pago</td></tr></tfoot>
+  </table>`;
 }
 
 // Tabelas de vendas por parâmetro UTM — cruzadas com Invest. do Meta (visão global, sem separar campanha)
