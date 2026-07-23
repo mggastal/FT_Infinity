@@ -211,6 +211,8 @@ td.g-utm,th.g-utm{background:rgba(217,119,6,.06);}
 @media(max-width:640px){.utm-grid{grid-template-columns:1fr;}}
 .utm-table{border:1px solid var(--border);border-radius:10px;overflow:hidden;background:var(--surface);}
 .utm-table-ttl{font-family:'DM Mono',monospace;font-size:11px;font-weight:700;color:var(--text);padding:7px 10px;background:var(--surface2);border-bottom:1px solid var(--border);}
+.tag-lead{display:inline-block;font-size:7px;font-weight:800;text-transform:uppercase;letter-spacing:.5px;padding:2px 6px;border-radius:20px;background:rgba(5,150,105,.13);color:#059669;vertical-align:middle;margin-left:5px;}
+[data-theme="dark"] .tag-lead{background:rgba(5,150,105,.22);color:#34d399;}
 .seg-tbl table{width:100%;border-collapse:collapse;}
 .seg-tbl thead th{font-size:9px;text-transform:uppercase;letter-spacing:.6px;color:var(--muted);font-weight:700;padding:5px 8px;background:var(--surface2);border-bottom:1px solid var(--border);}
 .seg-tbl thead th.num{text-align:right;}
@@ -1404,8 +1406,9 @@ function renderUtmTables(rawF){
     const map={};
     rawF.forEach(r=>{
       const v=(r[dim.key]||'').toString().trim() || '(vazio / fora do relatório)';
-      if(!map[v]) map[v]={n:v,qtd:0,val:0};
+      if(!map[v]) map[v]={n:v,qtd:0,val:0,isPago:false};
       map[v].qtd++; map[v].val=r2(map[v].val+r.v);
+      if((r.org||'').includes('Pago')) map[v].isPago=true;
     });
     const rows=Object.values(map).sort((a,b)=>b.qtd-a.qtd||b.val-a.val);
     if(!rows.length) return '';
@@ -1427,7 +1430,7 @@ function renderUtmTables(rawF){
           ${hasSp?th('CPA'):''}
         </tr></thead>
         <tbody>${rows.map(r=>`<tr>
-          <td style="font-size:10px;max-width:${hasSp?170:210}px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;padding:4px 8px;border-bottom:1px solid var(--border)" title="${r.n}">${r.n}</td>
+          <td style="font-size:10px;max-width:${hasSp?170:210}px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;padding:4px 8px;border-bottom:1px solid var(--border)" title="${r.n}">${r.n}${(dim.key==='of'&&r.isPago)?' <span class="tag-lead">Lead pago</span>':''}</td>
           ${hasSp?`<td style="font-size:10px;text-align:right;padding:4px 8px;font-family:monospace;border-bottom:1px solid var(--border)">${r.sp!=null?fR(r.sp):'—'}</td>`:''}
           <td style="font-size:10px;text-align:right;padding:4px 8px;font-family:monospace;border-bottom:1px solid var(--border);font-weight:700">${fN(r.qtd)}</td>
           <td style="font-size:10px;text-align:right;padding:4px 8px;font-family:monospace;border-bottom:1px solid var(--border);color:#059669">${fR(r.val)}</td>
