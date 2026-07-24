@@ -21,10 +21,18 @@ FUNIL_TITULO     = "Análise do Funil Pago (Meta Ads)"
 FUNIL_COMPRAS_PAGO = True          # True = etapa "Compras" do funil usa vendas com SCK pago (não o pixel do Meta)
 USAR_LOGO        = False           # False = não usa logo.png (sidebar mostra só a letra; sem favicon)
 USAR_RODAPE      = False           # False = oculta o rodapé "Desenvolvido por Sobé Estratégias"
-PRODUTOS_HOTMART = ["Acceso VIP: Taller El Negocio de la Longevidad Femenina","🥗 RECETARIO DE ZONAS AZULES 🍃","Diagnóstico de Posicionamiento"]  # SÓ este produto; "ALL"/[] = todos
+PRODUTOS_HOTMART = ["Acceso VIP: Taller El Negocio de la Longevidad Femenina"]  # SÓ este produto; "ALL"/[] = todos
+# ── Upsells do produto principal — identificados pelo CÓDIGO DA OFERTA (não pelo nome do   ──
+# produto, pois o mesmo nome pode existir sob outro código de oferta em outro lançamento).
+# Cada upsell soma ao Faturamento/ROAS/CPA geral do funil (como o produto principal) e também
+# aparece destacado à parte no card "Vendas por Produto". "valor" = preço fixo por venda (US$).
+UPSELLS_HOTMART  = [
+    {"nome": "🥗 Recetario de Zonas Azules", "oferta": "mw36twfc", "valor": 19},
+    {"nome": "Diagnóstico de Posicionamiento", "oferta": "fcpjeeik", "valor": 9},
+]
 # ── Classificação Pago vs Orgânico: pelo CÓDIGO DA OFERTA (fonte da verdade) ──
 # Vendas nessas ofertas = tráfego pago; todo o resto = orgânico (resolve UTMs vazias do pago)
-OFERTAS_PAGO     = ["kdpeaqhn","zzoec1tg","804s6rul","4kvrtrqw","txloa2x3","fcpjeeik","mw36twfc"]
+OFERTAS_PAGO     = ["kdpeaqhn","zzoec1tg","804s6rul","4kvrtrqw","txloa2x3"]
 # (SCK ainda é lido para as tabelas de UTM, mas NÃO define mais a origem)
 SCK_SRC_PAGO     = ["fb","facebook","ig","instagram"]
 # Valor por venda: como a Hotmart traz moedas misturadas, cada venda conta um valor FIXO.
@@ -154,23 +162,38 @@ def load_hotmart():
     st = g_on(df,col,"Transaction Status").astype(str).str.upper().str.strip()
     df = df[st.isin(["APPROVED","COMPLETE","COMPLETED"])].copy()
 
-    # ── Produto: só o(s) configurado(s) ──
+    # ── Produto (nome bruto da planilha) e código da oferta (para achar os upsells) ──
     df["Produto"] = g_on(df,col,"Product Name").astype(str)
+    df["oferta"]  = g_on(df,col,"Offer Code").astype(str).str.strip().str.lower().replace({"nan":""})
+
+    # ── Produto principal: filtra pelo NOME configurado ──
     if PRODUTOS_HOTMART and PRODUTOS_HOTMART != ["ALL"]:
-        df = df[df["Produto"].isin(PRODUTOS_HOTMART)]
-        if len(df)==0:
+        principal = df[df["Produto"].isin(PRODUTOS_HOTMART)].copy()
+        if len(principal)==0:
             print(f"     ⚠ nenhuma venda do produto {PRODUTOS_HOTMART} — confira o nome exato")
+    else:
+        principal = df.copy()
+    principal["valor"] = float(VALOR_FIXO) if VALOR_FIXO is not None else to_num(g_on(principal,col,"Price"))
+    principal["is_upsell"] = False
+
+    # ── Upsells: filtra pelo CÓDIGO DA OFERTA (evita misturar com outras vendas do mesmo nome) ──
+    upsell_frames = []
+    for u in (UPSELLS_HOTMART or []):
+        sub = df[df["oferta"] == str(u["oferta"]).strip().lower()].copy()
+        if len(sub)==0:
+            print(f"     ⚠ nenhuma venda do upsell '{u['nome']}' (oferta {u['oferta']}) — confira o código")
+            continue
+        sub["valor"] = float(u["valor"])
+        sub["is_upsell"] = True
+        upsell_frames.append(sub)
+        print(f"     + upsell '{u['nome']}': {len(sub)} vendas × ${u['valor']:g}")
+
+    df = pd.concat([principal]+upsell_frames, ignore_index=True) if upsell_frames else principal
 
     # ── Data ──
     df["date"] = pd.to_datetime(g_on(df,col,"Order Date"), errors="coerce")
     df = df.dropna(subset=["date"])
     df["date"] = df["date"].dt.normalize()
-
-    # ── Valor: fixo por venda (moeda mista na planilha é ignorada) ──
-    if VALOR_FIXO is not None:
-        df["valor"] = float(VALOR_FIXO)
-    else:
-        df["valor"] = to_num(g_on(df,col,"Price"))
 
     # ── SCK → labels/UTMs (informativo) ──
     sck = g_on(df,col,"Tracking Source SCK").apply(parse_sck)
@@ -182,7 +205,7 @@ def load_hotmart():
 
     # ── ORIGEM pelo código da oferta (fonte da verdade) ──
     pago_set = {c.strip().lower() for c in OFERTAS_PAGO}
-    df["oferta"] = g_on(df,col,"Offer Code").astype(str).str.strip().str.lower().replace({"nan":""})
+    # (coluna "oferta" já calculada acima, antes do split principal/upsells)
     # País do comprador (coluna "País")
     pais_col = next((c for c in df.columns if _norm_pais(c) in ("pais","country","pais do comprador")), None)
     df["pais"] = df[pais_col].apply(pais_code) if pais_col else ""
@@ -201,7 +224,8 @@ def load_hotmart():
             extra_rows.append({"date":d.normalize(),"valor":val_extra,
                 "Produto":(PRODUTOS_HOTMART[0] if PRODUTOS_HOTMART and PRODUTOS_HOTMART!=["ALL"] else "Acceso VIP"),
                 "src":"","med":"","camp_sck":"","u_content":"","u_term":"","oferta":"","pais":"",
-                "Organico ou Pago":EXTRAS_ORIGEM,"origem_sck":EXTRAS_ORIGEM,"sck_label":EXTRAS_LABEL})
+                "Organico ou Pago":EXTRAS_ORIGEM,"origem_sck":EXTRAS_ORIGEM,"sck_label":EXTRAS_LABEL,
+                "is_upsell":False})
     if extra_rows:
         df = pd.concat([df, pd.DataFrame(extra_rows)], ignore_index=True)
         print(f"     + {len(extra_rows)} vendas extras (fora do relatório) em {', '.join(sorted({e['data'] for e in VENDAS_EXTRAS}))}")
@@ -274,7 +298,8 @@ def hotmart_process(df):
             "uco": str(r.get("u_content","")),
             "ut": str(r.get("u_term","")),
             "of": str(r.get("oferta","")),
-            "ps": str(r.get("pais",""))
+            "ps": str(r.get("pais","")),
+            "up": bool(r.get("is_upsell", False)) if pd.notna(r.get("is_upsell", False)) else False
         })
     return kpis, daily, raw
 
