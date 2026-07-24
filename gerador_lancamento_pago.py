@@ -21,10 +21,10 @@ FUNIL_TITULO     = "Análise do Funil Pago (Meta Ads)"
 FUNIL_COMPRAS_PAGO = True          # True = etapa "Compras" do funil usa vendas com SCK pago (não o pixel do Meta)
 USAR_LOGO        = False           # False = não usa logo.png (sidebar mostra só a letra; sem favicon)
 USAR_RODAPE      = False           # False = oculta o rodapé "Desenvolvido por Sobé Estratégias"
-PRODUTOS_HOTMART = ["Acceso VIP: Taller El Negocio de la Longevidad Femenina"]  # SÓ este produto; "ALL"/[] = todos
+PRODUTOS_HOTMART = ["Acceso VIP: Taller El Negocio de la Longevidad Femenina","🥗 RECETARIO DE ZONAS AZULES 🍃","Diagnóstico de Posicionamiento"]  # SÓ este produto; "ALL"/[] = todos
 # ── Classificação Pago vs Orgânico: pelo CÓDIGO DA OFERTA (fonte da verdade) ──
 # Vendas nessas ofertas = tráfego pago; todo o resto = orgânico (resolve UTMs vazias do pago)
-OFERTAS_PAGO     = ["kdpeaqhn","zzoec1tg","804s6rul","4kvrtrqw","txloa2x3"]
+OFERTAS_PAGO     = ["kdpeaqhn","zzoec1tg","804s6rul","4kvrtrqw","txloa2x3","fcpjeeik","mw36twfc"]
 # (SCK ainda é lido para as tabelas de UTM, mas NÃO define mais a origem)
 SCK_SRC_PAGO     = ["fb","facebook","ig","instagram"]
 # Valor por venda: como a Hotmart traz moedas misturadas, cada venda conta um valor FIXO.
