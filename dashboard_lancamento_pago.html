@@ -347,8 +347,8 @@ td.g-utm,th.g-utm{background:rgba(217,119,6,.06);}
         <div class="cc">
           <div class="cc-t"><span id="ttlVendasDiarias">Vendas Diárias (Eduzz) & Investimento</span>
             <span class="gran-pills"><button class="gp active" data-g="dia" onclick="setOvGran('dia',this)">Diário</button><button class="gp" data-g="sem" onclick="setOvGran('sem',this)">Semanal</button><button class="gp" data-g="mes" onclick="setOvGran('mes',this)">Mensal</button></span>
-            <span class="gran-pills" style="margin-left:6px"><button class="gp active" data-m="cpv" onclick="setOvMetric2('cpv',this)">CPV</button><button class="gp" data-m="roas" onclick="setOvMetric2('roas',this)">ROAS</button></span></div>
-          <div class="cc-s" id="ovMainSub">Vendas (barras laranja) · Invest. Meta (linha verde) · CPV (linha preta)</div>
+            <span class="gran-pills" style="margin-left:6px"><button class="gp active" data-m="cpv" onclick="setOvMetric2('cpv',this)">CAC</button><button class="gp" data-m="roas" onclick="setOvMetric2('roas',this)">ROAS</button></span></div>
+          <div class="cc-s" id="ovMainSub">Vendas (barras laranja) · Invest. Meta (linha verde) · CAC (linha preta)</div>
           <div class="cw" style="height:230px"><canvas id="chOvMain"></canvas></div>
         </div>
         <div class="cc" id="cardOrigem">
@@ -524,10 +524,10 @@ const I18N={
   'Taxa de Conversão (PV→Compra)':'Tasa de Conversión (PV→Compra)',
   // Gráficos
   'Vendas · Investimento · CPA':'Ventas · Inversión · CPA',
-  'Vendas (barras laranja) · Invest. Meta (linha verde) · CPV (linha preta)':'Ventas (barras naranjas) · Invers. Meta (línea verde) · CPV (línea negra)',
+  'Vendas (barras laranja) · Invest. Meta (linha verde) · CAC (linha preta)':'Ventas (barras naranjas) · Invers. Meta (línea verde) · CAC (línea negra)',
   'Vendas (barras laranja) · Invest. Meta (linha verde) · ROAS (linha preta)':'Ventas (barras naranjas) · Invers. Meta (línea verde) · ROAS (línea negra)',
   'Vendas Meta (barras azuis) · Invest. (linha verde) · CPA (linha preta tracejada)':'Ventas Meta (barras azules) · Invers. (línea verde) · CPA (línea negra punteada)',
-  'Invest.':'Invers.','CPV':'CPV','CPA':'CPA','Vendas Diárias':'Ventas Diarias',
+  'Invest.':'Invers.','CPV':'CPV','CAC':'CAC','CPA':'CPA','Vendas Diárias':'Ventas Diarias',
   // Seções / tabelas
   'Campanhas':'Campañas','Campanha':'Campaña','Segmentação':'Segmentación',
   'Compras por segmento · investimento e CPA no tooltip · respeita filtro de campanha e período':'Compras por segmento · inversión y CPA en el tooltip · respeta filtro de campaña y período',
@@ -1070,7 +1070,7 @@ function renderOverview(){
       <div class="kpi-sub" id="kpiVendasSub">${FONTE_LABEL}</div>
     </div>
     <div class="kpi" style="--kc:${cpaCls(cpaGeral)==='cg'?'#059669':cpaCls(cpaGeral)==='cw2'?'#d97706':'#dc2626'}">
-      <div class="kpi-lbl">CPA</div><div class="kpi-val ${cpaCls(cpaGeral)}">${fR(cpaGeral)}</div>
+      <div class="kpi-lbl">CAC</div><div class="kpi-val ${cpaCls(cpaGeral)}">${fR(cpaGeral)}</div>
       <div class="kpi-sub">Invest. / vendas ${FONTE_LABEL}</div></div>
     ${upsellRows.length>0?`<div class="kpi" style="--kc:#334155">
       <div class="kpi-lbl">${t('Faturamento Upsell')}</div><div class="kpi-val" style="font-size:16px;color:var(--text)">${fR(upsellVal)}</div>
@@ -1142,9 +1142,9 @@ function renderOverview(){
     const roasLine=ovLabels.map((_,i)=>{const rv=vendasVal[i]||0;const s=invest[i]||0;return s>0&&rv>0?r2(rv/s):null;});
     const metric2IsRoas=ovMetric2==='roas';
     const metric2Data=metric2IsRoas?roasLine:cpv;
-    const metric2Label=metric2IsRoas?'ROAS':'CPV';
+    const metric2Label=metric2IsRoas?'ROAS':'CAC';
     const subEl2=document.getElementById('ovMainSub');
-    if(subEl2) subEl2.textContent=t(metric2IsRoas?'Vendas (barras laranja) · Invest. Meta (linha verde) · ROAS (linha preta)':'Vendas (barras laranja) · Invest. Meta (linha verde) · CPV (linha preta)');
+    if(subEl2) subEl2.textContent=t(metric2IsRoas?'Vendas (barras laranja) · Invest. Meta (linha verde) · ROAS (linha preta)':'Vendas (barras laranja) · Invest. Meta (linha verde) · CAC (linha preta)');
 
     dc('chOvMain');
     CH['chOvMain']=new Chart(document.getElementById('chOvMain'),{
