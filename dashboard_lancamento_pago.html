@@ -573,7 +573,7 @@ const I18N={
   'Vendas por Produto (Principal + Upsells)':'Ventas por Producto (Principal + Upsells)',
   'período selecionado · upsells somam ao Faturamento/ROAS geral':'período seleccionado · los upsells suman a la Facturación/ROAS general',
   'Total Upsells':'Total Upsells','Produto':'Producto',
-  'Faturamento Upsell':'Facturación Upsell','do total':'del total',
+  'Faturamento Upsell':'Facturación Upsell','do total':'del total','Faturamento Total':'Facturación Total',
 
 };
 const I18N_RX=[
@@ -1053,7 +1053,7 @@ function renderOverview(){
   ovKpisEl.className='krow mb14 '+(upsellRows.length>0?'k6':'k5');
   ovKpisEl.innerHTML=`
     <div class="kpi" style="--kc:#334155"><div class="kpi-lbl">Investimento</div><div class="kpi-val" style="font-size:16px;color:var(--text)">${fR(spendF)}</div><div class="kpi-sub">Meta Ads</div></div>
-    <div class="kpi" style="--kc:#059669"><div class="kpi-lbl">Faturamento</div><div class="kpi-val" style="font-size:16px;color:#059669">${fR(hotValF)}</div><div class="kpi-sub">${FONTE_LABEL}</div></div>
+    <div class="kpi" style="--kc:#059669"><div class="kpi-lbl">${t('Faturamento Total')}</div><div class="kpi-val" style="font-size:16px;color:#059669">${fR(hotValF)}</div><div class="kpi-sub">${FONTE_LABEL}</div></div>
     <div class="kpi" style="--kc:${roasCls(roasF)==='cg'?'#059669':roasCls(roasF)==='cw2'?'#d97706':'#dc2626'}">
       <div class="kpi-lbl">ROAS</div><div class="kpi-val ${roasCls(roasF)}">${roasF!=null?roasF.toFixed(2)+'x':'—'}</div>
       <div class="kpi-sub">${FONTE_LABEL} / Invest.</div></div>
@@ -1065,8 +1065,8 @@ function renderOverview(){
     <div class="kpi" style="--kc:${cpaCls(cpaGeral)==='cg'?'#059669':cpaCls(cpaGeral)==='cw2'?'#d97706':'#dc2626'}">
       <div class="kpi-lbl">CPA</div><div class="kpi-val ${cpaCls(cpaGeral)}">${fR(cpaGeral)}</div>
       <div class="kpi-sub">Invest. / vendas ${FONTE_LABEL}</div></div>
-    ${upsellRows.length>0?`<div class="kpi" style="--kc:#7c3aed">
-      <div class="kpi-lbl">${t('Faturamento Upsell')}</div><div class="kpi-val" style="font-size:16px;color:#7c3aed">${fR(upsellVal)}</div>
+    ${upsellRows.length>0?`<div class="kpi" style="--kc:#334155">
+      <div class="kpi-lbl">${t('Faturamento Upsell')}</div><div class="kpi-val" style="font-size:16px;color:var(--text)">${fR(upsellVal)}</div>
       <div class="kpi-sub">${upsellPct!=null?upsellPct.toFixed(1)+'% '+t('do total'):''}</div></div>`:''}`;
 
   // Recalcular funil a partir dos dados diários filtrados
