@@ -346,8 +346,9 @@ td.g-utm,th.g-utm{background:rgba(217,119,6,.06);}
       <div class="ov-mid mb14" id="ovMid">
         <div class="cc">
           <div class="cc-t"><span id="ttlVendasDiarias">Vendas Diárias (Eduzz) & Investimento</span>
-            <span class="gran-pills"><button class="gp active" data-g="dia" onclick="setOvGran('dia',this)">Diário</button><button class="gp" data-g="sem" onclick="setOvGran('sem',this)">Semanal</button><button class="gp" data-g="mes" onclick="setOvGran('mes',this)">Mensal</button></span></div>
-          <div class="cc-s">Vendas (barras laranja) · Invest. Meta (linha verde) · CPV (linha preta)</div>
+            <span class="gran-pills"><button class="gp active" data-g="dia" onclick="setOvGran('dia',this)">Diário</button><button class="gp" data-g="sem" onclick="setOvGran('sem',this)">Semanal</button><button class="gp" data-g="mes" onclick="setOvGran('mes',this)">Mensal</button></span>
+            <button class="gp" id="btnOvMetric2" onclick="toggleOvMetric2()" title="Alternar linha preta: CPV ↔ ROAS" style="margin-left:4px">CPV</button></div>
+          <div class="cc-s" id="ovMainSub">Vendas (barras laranja) · Invest. Meta (linha verde) · CPV (linha preta)</div>
           <div class="cw" style="height:230px"><canvas id="chOvMain"></canvas></div>
         </div>
         <div class="cc" id="cardOrigem">
@@ -524,6 +525,7 @@ const I18N={
   // Gráficos
   'Vendas · Investimento · CPA':'Ventas · Inversión · CPA',
   'Vendas (barras laranja) · Invest. Meta (linha verde) · CPV (linha preta)':'Ventas (barras naranjas) · Invers. Meta (línea verde) · CPV (línea negra)',
+  'Vendas (barras laranja) · Invest. Meta (linha verde) · ROAS (linha preta)':'Ventas (barras naranjas) · Invers. Meta (línea verde) · ROAS (línea negra)',
   'Vendas Meta (barras azuis) · Invest. (linha verde) · CPA (linha preta tracejada)':'Ventas Meta (barras azules) · Invers. (línea verde) · CPA (línea negra punteada)',
   'Invest.':'Invers.','CPV':'CPV','CPA':'CPA','Vendas Diárias':'Ventas Diarias',
   // Seções / tabelas
@@ -656,7 +658,7 @@ const CPM_MEDIO=10.0;
 
 // ═══ ESTADO ═══
 let filtroLct=true, periodDays=30, dateI=null, dateF=null, showLabels=true, labelSize=8;
-let ovGran='dia', metaGran='dia', diaGran='dia';
+let ovGran='dia', metaGran='dia', diaGran='dia', ovMetric2='cpv';
 let metaCampSel=new Set(); // filtro de campanhas da página Meta Ads (vazio = todas)
 
 // ═══ AGRUPAMENTO DIÁRIO/SEMANAL/MENSAL ═══
@@ -684,6 +686,12 @@ function granBuckets(days,mode){
 function granSum(arr,groups){return groups.map(g=>{let s=0,has=false;g.forEach(i=>{if(arr?.[i]!=null){s+=arr[i];has=true;}});return has?r2(s):null;});}
 
 function setOvGran(g,btn){ovGran=g;btn.parentElement.querySelectorAll('.gp').forEach(b=>b.classList.toggle('active',b===btn));renderOverview();}
+function toggleOvMetric2(){
+  ovMetric2=ovMetric2==='cpv'?'roas':'cpv';
+  const b=document.getElementById('btnOvMetric2');
+  if(b) b.textContent=t(ovMetric2==='cpv'?'CPV':'ROAS');
+  renderOverview();
+}
 function setMetaGran(g,btn){metaGran=g;btn.parentElement.querySelectorAll('.gp').forEach(b=>b.classList.toggle('active',b===btn));renderMeta();}
 
 // ═══ FILTRO DE CAMPANHAS · PÁGINA META ═══
@@ -1121,15 +1129,23 @@ function renderOverview(){
     const hm={},hval={};
     (hd?.days||[]).forEach((d,i)=>{hm[d]=(hm[d]||0)+(hd.qtd[i]||0);hval[d]=(hval[d]||0)+(hd.valor[i]||0);});
     let vendas=days.map(d=>hm[d]||null);
+    let vendasVal=days.map(d=>hval[d]||null);
     let invest=days.map(d=>metaSpend[d]||null);
     let ovLabels=days;
     if(ovGran!=='dia'){
       const bk=granBuckets(days,ovGran);
       ovLabels=bk.labels;
       vendas=granSum(vendas,bk.groups);
+      vendasVal=granSum(vendasVal,bk.groups);
       invest=granSum(invest,bk.groups);
     }
     const cpv=ovLabels.map((_,i)=>{const v=vendas[i]||0;const s=invest[i]||0;return v>0&&s>0?r2(s/v):null;});
+    const roasLine=ovLabels.map((_,i)=>{const rv=vendasVal[i]||0;const s=invest[i]||0;return s>0&&rv>0?r2(rv/s):null;});
+    const metric2IsRoas=ovMetric2==='roas';
+    const metric2Data=metric2IsRoas?roasLine:cpv;
+    const metric2Label=metric2IsRoas?'ROAS':'CPV';
+    const subEl2=document.getElementById('ovMainSub');
+    if(subEl2) subEl2.textContent=t(metric2IsRoas?'Vendas (barras laranja) · Invest. Meta (linha verde) · ROAS (linha preta)':'Vendas (barras laranja) · Invest. Meta (linha verde) · CPV (linha preta)');
 
     dc('chOvMain');
     CH['chOvMain']=new Chart(document.getElementById('chOvMain'),{
@@ -1137,13 +1153,13 @@ function renderOverview(){
         {label:t('Vendas'),data:vendas,backgroundColor:'rgba(249,115,22,.75)',borderRadius:3,type:'bar',yAxisID:'y1',
          datalabels:{...makeDatalabels('#f97316','',v=>v!=null?fN(v):null),display:ctx=>showLabels}},
         {label:t('Invest.'),data:invest,borderColor:'#059669',backgroundColor:'transparent',tension:.3,pointRadius:2,borderWidth:2,type:'line',spanGaps:true,datalabels:{display:false}},
-        {label:t('CPV'),data:cpv,borderColor:'#111',borderDash:[5,3],backgroundColor:'transparent',tension:.3,pointRadius:2,borderWidth:1.5,type:'line',yAxisID:'y2',spanGaps:true,datalabels:{display:ctx=>showLabels,color:'#333',font:{size:labelSize,weight:'bold'},formatter:v=>v!=null?MOEDA+v.toFixed(0):null,anchor:'end',align:'top',offset:2,clip:false}},
+        {label:t(metric2Label),data:metric2Data,borderColor:'#111',borderDash:[5,3],backgroundColor:'transparent',tension:.3,pointRadius:2,borderWidth:1.5,type:'line',yAxisID:'y2',spanGaps:true,datalabels:{display:ctx=>showLabels,color:'#333',font:{size:labelSize,weight:'bold'},formatter:v=>v!=null?(metric2IsRoas?v.toFixed(2)+'x':MOEDA+v.toFixed(0)):null,anchor:'end',align:'top',offset:2,clip:false}},
       ]},
       options:{...bo(),scales:{
         x:{ticks:{color:TXT(),font:bf,maxTicksLimit:14},grid:{color:GRID()}},
         y:{beginAtZero:true,ticks:{color:TXT(),font:bf,callback:v=>MOEDA+v.toLocaleString()},grid:{color:GRID()}},
         y1:{beginAtZero:true,position:'right',ticks:{color:'#f97316',font:bf},grid:{display:false},grace:'20%'},
-        y2:{position:'right',ticks:{color:'#555',font:bf,callback:v=>MOEDA+v.toFixed(0)},grid:{display:false},offset:true},
+        y2:{position:'right',ticks:{color:'#555',font:bf,callback:v=>metric2IsRoas?v.toFixed(1)+'x':MOEDA+v.toFixed(0)},grid:{display:false},offset:true},
       }}
     });
   }
