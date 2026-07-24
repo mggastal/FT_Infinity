@@ -64,6 +64,7 @@ body{background:var(--bg);color:var(--text);font-family:'DM Sans',sans-serif;fon
 /* KPI */
 .krow{display:grid;gap:10px;margin-bottom:14px;}
 .k5{grid-template-columns:repeat(5,1fr);}
+.k6{grid-template-columns:repeat(6,1fr);}
 .k4{grid-template-columns:repeat(4,1fr);}
 .k3{grid-template-columns:repeat(3,1fr);}
 .kpi{background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:13px 15px;position:relative;overflow:hidden;box-shadow:var(--sh);}
@@ -265,7 +266,7 @@ td.g-utm,th.g-utm{background:rgba(217,119,6,.06);}
   .mob-menu{display:flex;}
   .content{padding:12px;overflow-x:hidden;}
   .main{overflow-x:hidden;max-width:100vw;}
-  .k5,.k4,.k3{grid-template-columns:repeat(2,1fr);}
+  .k6,.k5,.k4,.k3{grid-template-columns:repeat(2,1fr);}
   .g2,.g3,.g73{grid-template-columns:1fr;}
   .pizza-grid{grid-template-columns:1fr;}
   .tc{overflow-x:auto;}
@@ -356,15 +357,15 @@ td.g-utm,th.g-utm{background:rgba(217,119,6,.06);}
       </div>
       <!-- Tabelas com a largura toda -->
       <div class="ov-bottom" id="ovBottom" style="display:grid;grid-template-columns:1fr;gap:12px;margin-bottom:14px;">
-        <div class="cc" id="cardProduto">
-          <div class="cc-t" id="ccProdutoTitle">Vendas por Produto</div>
-          <div class="cc-s" id="ccProdutoSub">por origem</div>
-          <div id="tPorProduto"></div>
-        </div>
         <div class="cc" id="cardProdutos3" style="display:none">
           <div class="cc-t">Vendas por Produto (Principal + Upsells)</div>
           <div class="cc-s">período selecionado · upsells somam ao Faturamento/ROAS geral</div>
           <div id="tPorProdutos3"></div>
+        </div>
+        <div class="cc" id="cardProduto">
+          <div class="cc-t" id="ccProdutoTitle">Vendas por Produto</div>
+          <div class="cc-s" id="ccProdutoSub">por origem</div>
+          <div id="tPorProduto"></div>
         </div>
         <div class="cc" id="cardPais" style="display:none">
           <div class="cc-t">Vendas por País</div>
@@ -572,6 +573,7 @@ const I18N={
   'Vendas por Produto (Principal + Upsells)':'Ventas por Producto (Principal + Upsells)',
   'período selecionado · upsells somam ao Faturamento/ROAS geral':'período seleccionado · los upsells suman a la Facturación/ROAS general',
   'Total Upsells':'Total Upsells','Produto':'Producto',
+  'Faturamento Upsell':'Facturación Upsell','do total':'del total',
 
 };
 const I18N_RX=[
@@ -1044,7 +1046,12 @@ function renderOverview(){
   const roasF=spendF>0&&hotValF>0?r2(hotValF/spendF):null;
   const cpaF=spendF>0&&purF>0?r2(spendF/purF):null;
   const cpaGeral=spendF>0&&hotQtdF>0?r2(spendF/hotQtdF):null;
-  document.getElementById('ovKpis').innerHTML=`
+  const upsellRows=rawKpi.filter(r=>r.up);
+  const upsellVal=r2(upsellRows.reduce((s,r)=>s+r.v,0));
+  const upsellPct=hotValF>0&&upsellRows.length>0?r2(upsellVal/hotValF*100):null;
+  const ovKpisEl=document.getElementById('ovKpis');
+  ovKpisEl.className='krow mb14 '+(upsellRows.length>0?'k6':'k5');
+  ovKpisEl.innerHTML=`
     <div class="kpi" style="--kc:#334155"><div class="kpi-lbl">Investimento</div><div class="kpi-val" style="font-size:16px;color:var(--text)">${fR(spendF)}</div><div class="kpi-sub">Meta Ads</div></div>
     <div class="kpi" style="--kc:#059669"><div class="kpi-lbl">Faturamento</div><div class="kpi-val" style="font-size:16px;color:#059669">${fR(hotValF)}</div><div class="kpi-sub">${FONTE_LABEL}</div></div>
     <div class="kpi" style="--kc:${roasCls(roasF)==='cg'?'#059669':roasCls(roasF)==='cw2'?'#d97706':'#dc2626'}">
@@ -1057,7 +1064,10 @@ function renderOverview(){
     </div>
     <div class="kpi" style="--kc:${cpaCls(cpaGeral)==='cg'?'#059669':cpaCls(cpaGeral)==='cw2'?'#d97706':'#dc2626'}">
       <div class="kpi-lbl">CPA</div><div class="kpi-val ${cpaCls(cpaGeral)}">${fR(cpaGeral)}</div>
-      <div class="kpi-sub">Invest. / vendas ${FONTE_LABEL}</div></div>`;
+      <div class="kpi-sub">Invest. / vendas ${FONTE_LABEL}</div></div>
+    ${upsellRows.length>0?`<div class="kpi" style="--kc:#7c3aed">
+      <div class="kpi-lbl">${t('Faturamento Upsell')}</div><div class="kpi-val" style="font-size:16px;color:#7c3aed">${fR(upsellVal)}</div>
+      <div class="kpi-sub">${upsellPct!=null?upsellPct.toFixed(1)+'% '+t('do total'):''}</div></div>`:''}`;
 
   // Recalcular funil a partir dos dados diários filtrados
   const mdF=getMD();
