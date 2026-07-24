@@ -541,6 +541,7 @@ const I18N={
   '(vazio / fora do relatório)':'(vacío / fuera del informe)','Fora do relatório':'Fuera del informe',
   'Direto / Não rastreado':'Directo / No rastreado','período total':'período total',
   'Filtrar respostas por origem':'Filtrar respuestas por origen',
+  '(vazio)':'(vacío)','Origem':'Origen','Meio':'Medio','Conteúdo':'Contenido',
   'Tráfego Pago':'Tráfico Pago','Código da Oferta':'Código de Oferta','(sem código)':'(sin código)',
   '+ Impr · Cliques · PV · Init CK':'+ Impr · Clics · PV · Init CK',
   'Meta Ads (gerenciador)':'Meta Ads (administrador)','UTM (Hotmart)':'UTM (Hotmart)',
@@ -572,6 +573,7 @@ const I18N_RX=[
   [/^Vendas (\S+)$/,'Ventas $1'],
   [/^(.+) · só tráfego pago$/,'$1 · solo tráfico pago'],
   [/^(.+) · só vendas de tráfego pago \(código de oferta\)$/,'$1 · solo ventas de tráfico pago (código de oferta)'],
+  [/^(\d[\d\.]*) respondentes selecionados$/,'$1 respondientes seleccionados'],
   [/^(.+) \/ Invest\.$/,'$1 / Invers.'],
   [/^Invest\. \/ vendas (.+)$/,'Invers. / ventas $1'],
 ];
@@ -2271,19 +2273,26 @@ function renderPesquisa(){
   buildPizzas();
 }
 
+const PES_EMPTY='__vazio__';
+function pesVal(r,utm){const v=(r[utm]??'').toString().trim();const lv=v.toLowerCase();return v&&lv!=='null'&&lv!=='undefined'&&lv!=='none'&&lv!=='nan'?v:PES_EMPTY;}
 function buildUtmFilters(){
   const UTM_LABELS={utm_source:'Origem',utm_medium:'Meio',utm_campaign:'Campanha',utm_content:'Conteúdo'};
   const utms=Object.keys(PESQUISA.filtros||{}).filter(k=>PESQUISA.filtros[k]?.length);
-  utms.forEach(u=>{if(!pesFilters[u]) pesFilters[u]=new Set(PESQUISA.filtros[u]);});
+  utms.forEach(u=>{
+    const temVazio=PESQUISA.rows.some(r=>pesVal(r,u)===PES_EMPTY);
+    if(!pesFilters[u]) pesFilters[u]=new Set([...PESQUISA.filtros[u], ...(temVazio?[PES_EMPTY]:[])]);
+  });
   document.getElementById('utmGroups').innerHTML=utms.map(utm=>{
-    const vals=PESQUISA.filtros[utm];
+    const temVazio=PESQUISA.rows.some(r=>pesVal(r,utm)===PES_EMPTY);
+    const vals=[...PESQUISA.filtros[utm], ...(temVazio?[PES_EMPTY]:[])];
     return `<div>
       <div class="utm-grp-lbl">${UTM_LABELS[utm]||utm}</div>
       <div class="utm-list">${vals.map(v=>{
-        const cnt=PESQUISA.rows.filter(r=>r[utm]===v).length;
+        const cnt=PESQUISA.rows.filter(r=>pesVal(r,utm)===v).length;
+        const lbl=v===PES_EMPTY?'(vazio)':v;
         return `<label class="utm-item">
-          <input type="checkbox" value="${v}" data-utm="${utm}" onchange="onPesCheck(this)" checked>
-          <span class="utm-item-lbl">${v}</span><span class="utm-item-cnt">${cnt}</span>
+          <input type="checkbox" value="${v}" data-utm="${utm}" onchange="onPesCheck(this)" ${pesFilters[utm].has(v)?'checked':''}>
+          <span class="utm-item-lbl"${v===PES_EMPTY?' style="font-style:italic;color:var(--muted)"':''}>${lbl}</span><span class="utm-item-cnt">${cnt}</span>
         </label>`;
       }).join('')}</div>
     </div>`;
@@ -2312,7 +2321,7 @@ function buildPizzas(){
   let rows=PESQUISA.rows;
   Object.entries(pesFilters).forEach(([utm,vals])=>{
     if(!vals||vals.size===0) return;
-    rows=rows.filter(r=>vals.has(r[utm]));
+    rows=rows.filter(r=>vals.has(pesVal(r,utm)));
   });
   document.getElementById('pesCount').textContent=`${rows.length} respondentes selecionados`;
   const grid=document.getElementById('pizzaGrid');
