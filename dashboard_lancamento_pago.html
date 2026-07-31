@@ -1048,7 +1048,7 @@ function renderOverview(){
     if(dateI&&dt<dateI)return false; if(dateF&&dt>dateF)return false;
     return true;
   });
-  const hotQtdF=rawKpi.length;
+  const hotQtdF=rawKpi.filter(r=>!r.up).length;
   const hotValF=r2(rawKpi.reduce((s,r)=>s+r.v,0));
   const roasF=spendF>0&&hotValF>0?r2(hotValF/spendF):null;
   const cpaF=spendF>0&&purF>0?r2(spendF/purF):null;
@@ -1127,7 +1127,10 @@ function renderOverview(){
     (md?.days||[]).forEach((d,i)=>{metaSpend[d]=(metaSpend[d]||0)+(md.spend[i]||0);});
     const hm={},hval={};
     (hd?.days||[]).forEach((d,i)=>{hm[d]=(hm[d]||0)+(hd.qtd[i]||0);hval[d]=(hval[d]||0)+(hd.valor[i]||0);});
-    let vendas=days.map(d=>hm[d]||null);
+    // Vendas (barras) e CAC: só produto principal (exclui upsells) — ROAS abaixo usa faturamento total (hval)
+    const hmMain={};
+    rawKpi.forEach(r=>{ if(!r.up) hmMain[r.d]=(hmMain[r.d]||0)+1; });
+    let vendas=days.map(d=>hmMain[d]||null);
     let vendasVal=days.map(d=>hval[d]||null);
     let invest=days.map(d=>metaSpend[d]||null);
     let ovLabels=days;
