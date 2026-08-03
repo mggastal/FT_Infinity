@@ -922,7 +922,7 @@ function utmSalesIdx(){
   // Vendas Hotmart atribuídas por UTM: utm_term=campanha · utm_medium=conjunto · utm_content=anúncio
   // Conjuntos/anúncios usam CHAVE COMPOSTA (nomes de conjunto se repetem entre campanhas)
   const ok=s=>{const n=normUtm(s);return (!n||n.startsWith('{{'))?null:n;};
-  const add=(bucket,key,r)=>{const b=bucket[key]=bucket[key]||{q:0,v:0};b.q++;b.v=r2(b.v+r.v);};
+  const add=(bucket,key,r)=>{const b=bucket[key]=bucket[key]||{q:0,v:0};if(!r.up)b.q++;b.v=r2(b.v+r.v);};
   const idx={camp:{},adset:{},ad:{}};
   hotRawFiltered().forEach(r=>{
     const t=ok(r.ut), m=ok(r.um), c=ok(r.uco);
@@ -1094,7 +1094,7 @@ function renderOverview(){
     };
     // Funil pago: etapa "Compras" = vendas com SCK de tráfego pago (não o pixel do Meta)
     if(FUNIL_COMPRAS_PAGO){
-      funnelKpis.purchase=hotRawFiltered().filter(r=>(r.org||'').includes('Pago')).length;
+      funnelKpis.purchase=hotRawFiltered().filter(r=>!r.up&&(r.org||'').includes('Pago')).length;
     }
     const sp2=funnelKpis.spend,imp2=funnelKpis.impressions,lc2=funnelKpis.link_clicks;
     const pv2=funnelKpis.page_view,ic2=funnelKpis.init_checkout,pur2=funnelKpis.purchase;
@@ -1182,13 +1182,17 @@ function renderOverview(){
       return true;
     });
 
+    // Vendas "em geral" (origem, SCK, país, campanhas, CAC) = só produto principal.
+    // Upsells só entram no ROAS e no card dedicado "Vendas por Produto".
+    const rawFMain=rawF.filter(r=>!r.up);
+
     // Pago vs Orgânico (oculto se USAR_ORIGEM=false — ex: UTMs ainda não confiáveis)
     if(!USAR_ORIGEM){
       const co=document.getElementById('cardOrigem'); if(co) co.style.display='none';
       const om=document.getElementById('ovMid'); if(om) om.style.gridTemplateColumns='1fr';
     }
-    const pagoCnt=rawF.filter(r=>r.t&&r.t.includes('Pago')).length;
-    const orgCnt =rawF.filter(r=>r.t&&r.t.includes('rgân')).length;
+    const pagoCnt=rawFMain.filter(r=>r.t&&r.t.includes('Pago')).length;
+    const orgCnt =rawFMain.filter(r=>r.t&&r.t.includes('rgân')).length;
     dc('chOvOrigem');
     if(USAR_ORIGEM) CH['chOvOrigem']=new Chart(document.getElementById('chOvOrigem'),{
       type:'doughnut',
@@ -1206,12 +1210,12 @@ function renderOverview(){
     renderLadosPanel();
     renderProdutos3Panel(rawF);
 
-    // Card dinâmico: "Vendas por SCK" se o raw tiver SCK, senão "Vendas por Produto"
-    const temSck=rawF.some(r=>r.sck);
+    // Card dinâmico: "Vendas por SCK" se o raw tiver SCK, senão "Vendas por Produto" — só produto principal
+    const temSck=rawFMain.some(r=>r.sck);
     const tituloCard=document.querySelector('#cardProduto .cc-t')||document.getElementById('ccProdutoTitle');
     const keyFn=temSck?(r=>r.sck||'Direto / Não rastreado'):(r=>r.p);
     const prodMap={};
-    rawF.forEach(r=>{
+    rawFMain.forEach(r=>{
       const k=keyFn(r);
       if(!prodMap[k]) prodMap[k]={produto:k,pago:0,org:0,total:0,val:0};
       prodMap[k].total++;
@@ -1222,12 +1226,12 @@ function renderOverview(){
     const prods=Object.values(prodMap).sort((a,b)=>b.total-a.total||b.val-a.val);
     const el=document.getElementById('tPorProduto');
     const sub=document.getElementById('ccProdutoSub');
-    const temUtm=rawF.some(r=>r.us||r.um||r.uc||r.uco||r.ut);
+    const temUtm=rawFMain.some(r=>r.us||r.um||r.uc||r.uco||r.ut);
     if(tituloCard) tituloCard.textContent=temUtm?'Vendas por SCK':(temSck?'Vendas por SCK':'Vendas por Produto');
     if(sub) sub.textContent=(temUtm?'por parâmetro UTM · ':'')+(periodDays>0?`últimos ${periodDays}d`:'período total');
     if(el){
       if(!prods.length){el.innerHTML='<div style="padding:12px;color:var(--muted);font-size:12px">Sem vendas no período</div>';return;}
-      if(temUtm){ el.innerHTML=renderUtmTables(rawF); }
+      if(temUtm){ el.innerHTML=renderUtmTables(rawFMain); }
       else {
         el.innerHTML=`<table style="width:100%;border-collapse:collapse">
           <thead><tr style="background:var(--surface2)">
@@ -1306,6 +1310,7 @@ function renderPaisPanel(){
   // Base própria: período + datas custom, SEM o filtro Tráfego Pago (painel mostra tudo sempre)
   const hoje=getHoje();
   const base=(HOT_RAW||[]).filter(r=>{
+    if(r.up) return false;
     const dt=parseDayStr(r.d);
     if(periodDays>0){const fim=new Date(hoje);if(periodDays===1)fim.setDate(fim.getDate()-1);fim.setHours(23,59,59);
       const ini=new Date(fim);ini.setDate(ini.getDate()-(periodDays===1?0:periodDays-1));ini.setHours(0,0,0,0);
@@ -1419,6 +1424,7 @@ function renderLadosPanel(){
   const rows=LADOS.map((l,i)=>({nome:l.nome,sp:sp[i],qtd:0}));
   const na={nome:'Destino não identificado',sp:spNA>0?spNA:null,qtd:0};
   (HOT_RAW||[]).forEach(r=>{
+    if(r.up) return;
     if(!isPagoRow(r)) return;
     if(!inPeriodo(r.d)) return;
     const li=ladoDe([r.ut,r.um,r.uco,r.uc,r.us].join(' '));
@@ -1531,7 +1537,7 @@ function renderMeta(){
     if(dateI&&dt<dateI)return false; if(dateF&&dt>dateF)return false;
     return true;
   });
-  const hotQtdMK=rawMK.length;
+  const hotQtdMK=rawMK.filter(r=>!r.up).length;
   const hotValMK=r2(rawMK.reduce((s,r)=>s+r.v,0));
   // Faturamento, ROAS, Vendas e CPA são FIXOS (escopo total do lançamento, só período):
   // usar o daily SEM filtro de campanha para não inflar ROAS/CPA ao filtrar
@@ -2209,7 +2215,7 @@ function renderDiarioCharts(){
   let purCv=md.purchase;
   if(usaPagoCv){
     const map={};
-    HOT_RAW.forEach(r=>{ if(isPagoRow(r)) map[r.d]=(map[r.d]||0)+1; });
+    HOT_RAW.forEach(r=>{ if(!r.up&&isPagoRow(r)) map[r.d]=(map[r.d]||0)+1; });
     purCv=md.days.map(d=>map[d]||0);
   }
 
