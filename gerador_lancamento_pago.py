@@ -242,6 +242,8 @@ def load_hotmart():
 def hotmart_process(df):
     total=df["valor"].sum(); qtd=len(df)
     ticket=round(float(total/qtd),2) if qtd>0 else 0
+    is_ups=df["is_upsell"].fillna(False).astype(bool) if "is_upsell" in df.columns else pd.Series([False]*len(df))
+    qtd_principal=int((~is_ups).sum())  # vendas só do produto principal (exclui upsells) — usado pro CAC "de fato"
     orig_col=next((c for c in df.columns if "organico" in c.lower() or "orgânico" in c.lower() or "pago" in c.lower()), "Organico ou Pago")
     pago=df[df[orig_col].str.contains("Pago",na=False,case=False)]
     org =df[df[orig_col].str.contains("Orgân",na=False,case=False)]
@@ -270,7 +272,7 @@ def hotmart_process(df):
             por_sck.append({"sck":str(lab),"qtd":int(len(gdf)),"val":round(float(gdf["valor"].sum()),2),
                             "origem":str(gdf["origem_sck"].iloc[0]) if "origem_sck" in gdf.columns else ""})
         por_sck.sort(key=lambda x:(-x["qtd"],-x["val"]))
-    kpis={"total":round(float(total),2),"qtd":int(qtd),"ticket_medio":ticket,
+    kpis={"total":round(float(total),2),"qtd":int(qtd),"qtd_principal":qtd_principal,"ticket_medio":ticket,
           "pago_qtd":int(len(pago)),"pago_val":round(float(pago["valor"].sum()),2),
           "org_qtd": int(len(org)), "org_val": round(float(org["valor"].sum()),2),
           "por_produto": por_produto, "por_sck": por_sck}
@@ -723,7 +725,7 @@ def main():
 
     print("\n[PESQUISA]")
     df_pes=load_pesquisa()
-    pes=pesquisa_process(df_pes, hot_k["qtd"])
+    pes=pesquisa_process(df_pes, hot_k["qtd_principal"])
     print(f"  ✓ {pes['total']} respostas")
 
     print("\n[HTML]")
