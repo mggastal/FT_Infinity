@@ -566,6 +566,61 @@ def meta_breakdowns(df):
     result['_camps']=camps_bd
     return result
 
+# ══ Classificação de origem compartilhada (Cert + Upsells) ══
+_JORN_CACHE = None
+def _lado_txt(t):
+    for l in (LADOS_COMPARATIVO or []):
+        if any(tk.upper() in t for tk in l["tokens"]): return l["nome"]
+    return ""
+
+_PAGO_SRC = {"ig","fb","an"}
+def _class_sck(txt):
+    """→ (origem, lado, utms{us,um,uc,uco,ut}) a partir de um SCK/base de origem."""
+    VAZIO = {"us":"","um":"","uc":"","uco":"","ut":""}
+    t = str(txt or "").strip()
+    if not t or t.lower()=="nan": return "", "", dict(VAZIO)
+    lado = _lado_txt(t.upper())
+    if t.lower().startswith("meta-ads"):    # formato "meta-ads.Funil.Campanha"
+        parts = [p.strip() for p in t.split(".") if p.strip()]
+        u = {"us":"meta-ads","um":parts[1] if len(parts)>=3 else "",
+             "uc":parts[-1] if len(parts)>=2 else "","uco":"","ut":""}
+        return "Pago", lado, u
+    q = dict(_up.parse_qsl(_html.unescape(t)))
+    if q:
+        u = {"us":(q.get("utm_source") or "").strip(),
+             "um":(q.get("utm_medium") or "").strip(),
+             "uc":(q.get("utm_campaign") or "").strip(),
+             "uco":(q.get("utm_content") or "").strip(),
+             "ut":(q.get("utm_term") or "").strip()}
+        srcv = u["us"].lower()
+        if srcv in _PAGO_SRC or srcv.startswith("{{"): return "Pago", lado, u
+        return "Orgânico", lado, u
+    u = dict(VAZIO); u["uc"] = t[:60]
+    return "Orgânico", lado, u
+
+def _jornada_acceso():
+    """Índice por e-mail das compras do Acceso: {email: {pago:bool, lado:str}} (cacheado)."""
+    global _JORN_CACHE
+    if _JORN_CACHE is not None: return _JORN_CACHE
+    jorn = {}
+    if _DF_HOT_ALL is not None:
+        df = _DF_HOT_ALL
+        colA = {c.replace("Sales History ","").strip(): c for c in df.columns}
+        ev = df[df["Produto"].isin(PRODUTOS_HOTMART)].copy()
+        ev["oferta"] = g_on(ev,colA,"Offer Code").astype(str).str.strip().str.lower()
+        ev["_sck"]  = g_on(ev,colA,"Tracking Source SCK").astype(str)
+        pago_set = {o.lower() for o in OFERTAS_PAGO}
+        for _,r in ev.iterrows():
+            em = r["_email"]
+            if not em or em=="nan": continue
+            j = jorn.setdefault(em, {"pago":False,"lado":""})
+            if r["oferta"] in pago_set: j["pago"] = True
+            if not j["lado"]:
+                d = parse_sck(r["_sck"])
+                j["lado"] = _lado_txt(" ".join(str(v) for v in d.values()).upper())
+    _JORN_CACHE = jorn
+    return jorn
+
 # ══ PRODUTO PRINCIPAL (Certificación) — atribuição por jornada ══
 def load_cert():
     """Vendas do produto principal. Origem/destino: 1º pela coluna de origem preenchida na aba
@@ -602,56 +657,12 @@ def load_cert():
     sck_cols = [c for c in cert.columns if c.startswith("Sales History Tracking Source SCK")]
     org_col = sck_cols[-1] if sck_cols else None
 
-    # ── jornada via e-mail (compras do Acceso) ──
-    df = _DF_HOT_ALL
-    colA = {c.replace("Sales History ","").strip(): c for c in df.columns}
-    ev = df[df["Produto"].isin(PRODUTOS_HOTMART)].copy()
-    ev["oferta"] = g_on(ev,colA,"Offer Code").astype(str).str.strip().str.lower()
-    ev["_sck"]  = g_on(ev,colA,"Tracking Source SCK").astype(str)
-    def lado_txt(t):
-        for l in (LADOS_COMPARATIVO or []):
-            if any(tk.upper() in t for tk in l["tokens"]): return l["nome"]
-        return ""
-    jorn = {}
-    pago_set = {o.lower() for o in OFERTAS_PAGO}
-    for _,r in ev.iterrows():
-        em = r["_email"]
-        if not em or em=="nan": continue
-        j = jorn.setdefault(em, {"pago":False,"lado":""})
-        if r["oferta"] in pago_set: j["pago"] = True
-        if not j["lado"]:
-            d = parse_sck(r["_sck"])
-            j["lado"] = lado_txt(" ".join(str(v) for v in d.values()).upper())
-
-    # ── classificação da coluna de origem manual ──
-    PAGO_SRC = {"ig","fb","an"}
-    VAZIO_UTM = {"us":"","um":"","uc":"","uco":"","ut":""}
-    def class_sck(txt):
-        """→ (origem, lado, utms{us,um,uc,uco,ut}) a partir da coluna de origem da base."""
-        t = str(txt or "").strip()
-        if not t or t.lower()=="nan": return "", "", dict(VAZIO_UTM)
-        lado = lado_txt(t.upper())
-        if t.lower().startswith("meta-ads"):    # formato "meta-ads.Funil.Campanha"
-            parts = [p.strip() for p in t.split(".") if p.strip()]
-            u = {"us":"meta-ads","um":parts[1] if len(parts)>=3 else "",
-                 "uc":parts[-1] if len(parts)>=2 else "","uco":"","ut":""}
-            return "Pago", lado, u
-        q = dict(_up.parse_qsl(_html.unescape(t)))
-        if q:
-            u = {"us":(q.get("utm_source") or "").strip(),
-                 "um":(q.get("utm_medium") or "").strip(),
-                 "uc":(q.get("utm_campaign") or "").strip(),
-                 "uco":(q.get("utm_content") or "").strip(),
-                 "ut":(q.get("utm_term") or "").strip()}
-            srcv = u["us"].lower()
-            if srcv in PAGO_SRC or srcv.startswith("{{"): return "Pago", lado, u
-            return "Orgânico", lado, u
-        u = dict(VAZIO_UTM); u["uc"] = t[:60]     # texto livre → registra como campanha
-        return "Orgânico", lado, u
+    # ── jornada via e-mail (compras do Acceso) — índice compartilhado ──
+    jorn = _jornada_acceso()
 
     rows=[]; n_base=n_jorn=n_sem=0; n_pago=n_org=0
     for _,r in cert.iterrows():
-        org,lado,utms = class_sck(r[org_col]) if org_col else ("","",{"us":"","um":"","uc":"","uco":"","ut":""})
+        org,lado,utms = _class_sck(r[org_col]) if org_col else ("","",{"us":"","um":"","uc":"","uco":"","ut":""})
         if org:
             n_base+=1
         else:
@@ -680,14 +691,22 @@ def load_upsells():
     df=df.copy()
     df["of2"]=g_on(df,col,"Offer Code").astype(str).str.strip().str.lower()
     df["date"]=pd.to_datetime(g_on(df,col,"Order Date"),errors="coerce")
+    df["_sck2"]=g_on(df,col,"Tracking Source SCK").astype(str)
+    jorn=_jornada_acceso()
     info=[]; rows=[]
     for u in UPSELLS:
         d=df[(df["of2"]==u["oferta"].lower())].dropna(subset=["date"])
         info.append({"nome":u["nome"],"valor":float(u["valor"]),"oferta":u["oferta"]})
         for _,r in d.iterrows():
-            rows.append({"d":r["date"].strftime("%d/%m"),"p":u["nome"],"v":float(u["valor"])})
-    resumo=" · ".join(f"{u['nome']}: {sum(1 for r in rows if r['p']==u['nome'])}" for u in UPSELLS)
-    print(f"  Upsells: {resumo}")
+            org,_,_ = _class_sck(r["_sck2"])          # 1º: SCK da própria venda
+            if not org:
+                j = jorn.get(r["_email"])              # 2º: jornada (compra do Acceso)
+                if j: org = "Pago" if j["pago"] else "Orgânico"
+            if not org: org = "Pago"                   # 3º: fallback — considerar tráfego pago
+            rows.append({"d":r["date"].strftime("%d/%m"),"p":u["nome"],"v":float(u["valor"]),"org":org})
+    for u in UPSELLS:
+        rp=[r for r in rows if r["p"]==u["nome"]]
+        print(f"  Upsell {u['nome']}: {len(rp)} | Pago {sum(1 for r in rp if r['org']=='Pago')} · Orgânico {sum(1 for r in rp if r['org']=='Orgânico')}")
     return info, rows
 
 # ══ REGIÃO (spend por país) ═══════════════════════════
