@@ -64,7 +64,6 @@ body{background:var(--bg);color:var(--text);font-family:'DM Sans',sans-serif;fon
 /* KPI */
 .krow{display:grid;gap:10px;margin-bottom:14px;}
 .k5{grid-template-columns:repeat(5,1fr);}
-.k6{grid-template-columns:repeat(6,1fr);}
 .k4{grid-template-columns:repeat(4,1fr);}
 .k3{grid-template-columns:repeat(3,1fr);}
 .kpi{background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:13px 15px;position:relative;overflow:hidden;box-shadow:var(--sh);}
@@ -214,6 +213,10 @@ td.g-utm,th.g-utm{background:rgba(217,119,6,.06);}
 .utm-table-ttl{font-family:'DM Mono',monospace;font-size:11px;font-weight:700;color:var(--text);padding:7px 10px;background:var(--surface2);border-bottom:1px solid var(--border);}
 .tag-lead{display:inline-block;font-size:7px;font-weight:800;text-transform:uppercase;letter-spacing:.5px;padding:2px 6px;border-radius:20px;background:rgba(5,150,105,.13);color:#059669;vertical-align:middle;margin-left:5px;}
 [data-theme="dark"] .tag-lead{background:rgba(5,150,105,.22);color:#34d399;}
+.tag-ups{display:inline-block;font-size:7px;font-weight:800;text-transform:uppercase;letter-spacing:.5px;padding:2px 6px;border-radius:20px;background:rgba(217,119,6,.14);color:#b45309;vertical-align:middle;margin-left:6px;}
+[data-theme="dark"] .tag-ups{background:rgba(217,119,6,.24);color:#fcd34d;}
+.g2{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:14px;}
+@media(max-width:900px){.g2{grid-template-columns:1fr;}}
 .seg-tbl table{width:100%;border-collapse:collapse;}
 .seg-tbl thead th{font-size:9px;text-transform:uppercase;letter-spacing:.6px;color:var(--muted);font-weight:700;padding:5px 8px;background:var(--surface2);border-bottom:1px solid var(--border);}
 .seg-tbl thead th.num{text-align:right;}
@@ -266,7 +269,7 @@ td.g-utm,th.g-utm{background:rgba(217,119,6,.06);}
   .mob-menu{display:flex;}
   .content{padding:12px;overflow-x:hidden;}
   .main{overflow-x:hidden;max-width:100vw;}
-  .k6,.k5,.k4,.k3{grid-template-columns:repeat(2,1fr);}
+  .k5,.k4,.k3{grid-template-columns:repeat(2,1fr);}
   .g2,.g3,.g73{grid-template-columns:1fr;}
   .pizza-grid{grid-template-columns:1fr;}
   .tc{overflow-x:auto;}
@@ -290,9 +293,11 @@ td.g-utm,th.g-utm{background:rgba(217,119,6,.06);}
     <div><div class="logo-name" id="sbNome">Dashboard</div><div class="logo-sub">Lançamento</div></div>
   </div>
   <nav class="sb-nav">
-    <button class="sb-item active" onclick="goPage('overview',this)"><span class="ico">📊</span>Overview</button>
+    <button class="sb-item active" onclick="goPage('overview',this)"><span class="ico">📊</span>Captação</button>
     <button class="sb-item" onclick="goPage('meta',this)"><span class="ico">🎯</span>Meta Ads</button>
     <button class="sb-item" onclick="goPage('diario',this)"><span class="ico">📈</span>Métricas Diárias</button>
+    <button class="sb-item" id="sbCert" style="display:none" onclick="goPage('cert',this)"><span class="ico">🎓</span><span id="sbCertLbl">Produto</span></button>
+    <button class="sb-item" id="sbGeral" style="display:none" onclick="goPage('geral',this)"><span class="ico">🏁</span>Geral</button>
     <button class="sb-item" id="sbPesquisa" onclick="goPage('pesquisa',this)"><span class="ico">🔍</span>Pesquisa</button>
   </nav>
   <div class="sb-lct"><div class="sb-lct-lbl">Lançamento</div><div class="sb-lct-val" id="sbLct">—</div></div>
@@ -346,9 +351,8 @@ td.g-utm,th.g-utm{background:rgba(217,119,6,.06);}
       <div class="ov-mid mb14" id="ovMid">
         <div class="cc">
           <div class="cc-t"><span id="ttlVendasDiarias">Vendas Diárias (Eduzz) & Investimento</span>
-            <span class="gran-pills"><button class="gp active" data-g="dia" onclick="setOvGran('dia',this)">Diário</button><button class="gp" data-g="sem" onclick="setOvGran('sem',this)">Semanal</button><button class="gp" data-g="mes" onclick="setOvGran('mes',this)">Mensal</button></span>
-            <span class="gran-pills" style="margin-left:6px"><button class="gp active" data-m="cpv" onclick="setOvMetric2('cpv',this)">CAC</button><button class="gp" data-m="roas" onclick="setOvMetric2('roas',this)">ROAS</button></span></div>
-          <div class="cc-s" id="ovMainSub">Vendas (barras laranja) · Invest. Meta (linha verde) · CAC (linha preta)</div>
+            <span class="gran-pills"><button class="gp active" data-g="dia" onclick="setOvGran('dia',this)">Diário</button><button class="gp" data-g="sem" onclick="setOvGran('sem',this)">Semanal</button><button class="gp" data-g="mes" onclick="setOvGran('mes',this)">Mensal</button></span></div>
+          <div class="cc-s">Vendas (barras laranja) · Invest. Meta (linha verde) · CPV (linha preta)</div>
           <div class="cw" style="height:230px"><canvas id="chOvMain"></canvas></div>
         </div>
         <div class="cc" id="cardOrigem">
@@ -359,9 +363,8 @@ td.g-utm,th.g-utm{background:rgba(217,119,6,.06);}
       <!-- Tabelas com a largura toda -->
       <div class="ov-bottom" id="ovBottom" style="display:grid;grid-template-columns:1fr;gap:12px;margin-bottom:14px;">
         <div class="cc" id="cardProdutos3" style="display:none">
-          <div class="cc-t">Vendas por Produto (Principal + Upsells)</div>
-          <div class="cc-s">período selecionado · upsells somam ao Faturamento/ROAS geral</div>
-          <div id="tPorProdutos3"></div>
+          <div class="cc-t">Vendas por Produto</div>
+          <div id="tProdutos3" style="overflow-x:auto"></div>
         </div>
         <div class="cc" id="cardProduto">
           <div class="cc-t" id="ccProdutoTitle">Vendas por Produto</div>
@@ -436,6 +439,52 @@ td.g-utm,th.g-utm{background:rgba(217,119,6,.06);}
       <div id="dailyCharts"></div>
     </div>
 
+    <!-- CERT (produto principal) -->
+    <section class="page-section" id="page-cert">
+      <div class="krow k3" id="certKpis"></div>
+      <div class="cc" style="margin-bottom:14px">
+        <div class="cc-t">Vendas por Dia</div>
+        <div style="height:210px;position:relative"><canvas id="ch_cert_dia"></canvas></div>
+      </div>
+      <div class="cc" style="margin-bottom:14px">
+        <div class="cc-t">Origem Detalhada (SCK da captura)</div>
+        <div class="cc-s">base preenchida na aba hotmart-CertificacionELF</div>
+        <div class="utm-grid" id="certUtmGrid"></div>
+      </div>
+      <div class="cc" style="margin-bottom:14px">
+        <div class="cc-t">Vendas por País</div>
+        <div class="cc-s">com investimento do lançamento por país</div>
+        <div id="tCertPais" style="overflow-x:auto"></div>
+      </div>
+      <div class="cc" style="margin-bottom:14px">
+        <div class="cc-t">Vendas por Destino (via jornada)</div>
+        <div class="cc-s" id="certDestSub">origem herdada da compra do ingresso pelo e-mail do comprador</div>
+        <div id="tCertLados" style="overflow-x:auto"></div>
+      </div>
+      <div class="cc" style="margin-bottom:14px">
+        <div class="cc-t">Vendas por Código de Oferta</div>
+        <div id="tCertOfertas" style="overflow-x:auto"></div>
+      </div>
+    </section>
+
+    <!-- GERAL (consolidado) -->
+    <section class="page-section" id="page-geral">
+      <div class="krow k3" id="geralKpis"></div>
+      <div class="cc" style="margin-bottom:14px">
+        <div class="cc-t">Vendas Diárias</div>
+        <div style="height:220px;position:relative"><canvas id="ch_geral_v"></canvas></div>
+      </div>
+      <div class="cc" style="margin-bottom:14px">
+        <div class="cc-t">Faturamento Diário</div>
+        <div style="height:220px;position:relative"><canvas id="ch_geral_f"></canvas></div>
+      </div>
+      <div class="cc" style="margin-bottom:14px">
+        <div class="cc-t">Faturamento por Produto</div>
+        <div class="cc-s">consolidado do lançamento · o ROAS Final considera TUDO</div>
+        <div id="tGeral" style="overflow-x:auto"></div>
+      </div>
+    </section>
+
     <!-- PESQUISA -->
     <div class="page-section" id="page-pesquisa">
       <div class="krow pes-kpis" id="pesKpis"></div>
@@ -479,6 +528,11 @@ const HOT_DAILY     = null;
 const HOT_RAW     = null;
 const REGIAO_RAW    = null;
 const LADOS         = null;
+const CERT          = null;
+const CERT_RAW      = null;
+const UPSELLS_INFO  = null;
+const UPSELLS_RAW   = null;
+const PRODUTO_CAPTACAO = null;
 const PESQUISA     = null;
 const TICKET_MEDIO     = null;
 
@@ -524,10 +578,9 @@ const I18N={
   'Taxa de Conversão (PV→Compra)':'Tasa de Conversión (PV→Compra)',
   // Gráficos
   'Vendas · Investimento · CPA':'Ventas · Inversión · CPA',
-  'Vendas (barras laranja) · Invest. Meta (linha verde) · CAC (linha preta)':'Ventas (barras naranjas) · Invers. Meta (línea verde) · CAC (línea negra)',
-  'Vendas (barras laranja) · Invest. Meta (linha verde) · ROAS (linha preta)':'Ventas (barras naranjas) · Invers. Meta (línea verde) · ROAS (línea negra)',
+  'Vendas (barras laranja) · Invest. Meta (linha verde) · CPV (linha preta)':'Ventas (barras naranjas) · Invers. Meta (línea verde) · CPV (línea negra)',
   'Vendas Meta (barras azuis) · Invest. (linha verde) · CPA (linha preta tracejada)':'Ventas Meta (barras azules) · Invers. (línea verde) · CPA (línea negra punteada)',
-  'Invest.':'Invers.','CPV':'CPV','CAC':'CAC','CPA':'CPA','Vendas Diárias':'Ventas Diarias',
+  'Invest.':'Invers.','CPV':'CPV','CPA':'CPA','Vendas Diárias':'Ventas Diarias',
   // Seções / tabelas
   'Campanhas':'Campañas','Campanha':'Campaña','Segmentação':'Segmentación',
   'Compras por segmento · investimento e CPA no tooltip · respeita filtro de campanha e período':'Compras por segmento · inversión y CPA en el tooltip · respeta filtro de campaña y período',
@@ -559,6 +612,26 @@ const I18N={
   'CPA (Pago)':'CPA (Pago)','CPA (Orgânico)':'CPA (Orgánico)','CPA Total':'CPA Total',
   'ROAS Pago':'ROAS Pago','ROAS Orgânico':'ROAS Orgánico','ROAS Total':'ROAS Total',
   'Em análise':'En análisis','Lado':'Lado','Destino':'Destino',
+  'Vendas por Dia':'Ventas por Día','CPA Real':'CPA Real','ROAS Real':'ROAS Real',
+  'Vendas Diárias':'Ventas Diarias','Faturamento Diário':'Facturación Diaria','Origem':'Origen',
+  'Taxa de Conversão':'Tasa de Conversión','captados':'captados',
+  'Origem Detalhada (SCK da captura)':'Origen Detallado (SCK de la captura)',
+  'base preenchida na aba hotmart-CertificacionELF':'base completada en la pestaña hotmart-CertificacionELF',
+  '(sem registro na base)':'(sin registro en la base)','sem origem':'sin origen',
+  'Sem registros de origem na base':'Sin registros de origen en la base',
+  'do faturamento total':'de la facturación total','TUDO / Invest.':'TODO / Invers.',
+  'Upsell':'Upsell',
+  'Captação':'Captación','Geral':'General','Faturamento por Produto':'Facturación por Producto',
+  'consolidado do lançamento · o ROAS Final considera TUDO':'consolidado del lanzamiento · el ROAS Final considera TODO',
+  'Investimento':'Inversión','Faturamento Total':'Facturación Total','ROAS Final':'ROAS Final',
+  'CPA s/ Certificación':'CPA s/ Certificación','% Certificación':'% Certificación','do faturamento':'de la facturación',
+  'Valor unit.':'Valor unit.','% do Fat.':'% de Fact.','Produto':'Producto',
+  'ROAS Final = faturamento de TODOS os produtos ÷ investimento Meta do lançamento · respeita o período selecionado':'ROAS Final = facturación de TODOS los productos ÷ inversión Meta del lanzamiento · respeta el período seleccionado',
+  'Origem (jornada)':'Origen (jornada)','Vendas por Destino (via jornada)':'Ventas por Destino (vía jornada)',
+  'Vendas por Código de Oferta':'Ventas por Código de Oferta','Código':'Código',
+  'com investimento do lançamento por país':'con inversión del lanzamiento por país',
+  'origem herdada da compra do ingresso pelo e-mail do comprador':'origen heredado de la compra de la entrada por el e-mail del comprador',
+  'Sem identificação':'Sin identificación','Invest. lançamento / vendas':'Inversión lanzamiento / ventas',
   'País não encontrado':'País no encontrado','Destino não identificado':'Destino no identificado',
   'Vendas por Destino (apenas Tráfego Pago)':'Ventas por Destino (solo Tráfico Pago)',
   'Somente vendas de tráfego pago (código de oferta) · destino pelo nome da campanha (invest.) e pelos UTMs (vendas) · "Destino não identificado" = venda paga sem UTM legível (SCK vazio ou macro)':'Solo ventas de tráfico pago (código de oferta) · destino por nombre de campaña (inversión) y por UTMs (ventas) · "Destino no identificado" = venta paga sin UTM legible (SCK vacío o macro)',
@@ -571,11 +644,6 @@ const I18N={
   '** Grupo UTM (Hotmart): vendas atribuídas por UTM (campanha=utm_term · conjunto=utm_medium · anúncio=utm_content) · Receita = vendas × valor fixo':'** Grupo UTM (Hotmart): ventas atribuidas por UTM (campaña=utm_term · conjunto=utm_medium · anuncio=utm_content) · Ingresos = ventas × valor fijo',
   '* Receita e ROAS: Compras (pixel Meta) × valor fixo por venda':'* Ingresos y ROAS: Compras (píxel Meta) × valor fijo por venta',
   '** V.UTM / ROAS UTM: vendas Hotmart atribuídas por UTM (campanha=utm_term · conjunto=utm_medium · anúncio=utm_content)':'** V.UTM / ROAS UTM: ventas Hotmart atribuidas por UTM (campaña=utm_term · conjunto=utm_medium · anuncio=utm_content)',
-  // Produto (principal + upsells)
-  'Vendas por Produto (Principal + Upsells)':'Ventas por Producto (Principal + Upsells)',
-  'período selecionado · upsells somam ao Faturamento/ROAS geral':'período seleccionado · los upsells suman a la Facturación/ROAS general',
-  'Total Upsells':'Total Upsells','Produto':'Producto',
-  'Faturamento Upsell':'Facturación Upsell','do total':'del total','Faturamento Total':'Facturación Total',
 
 };
 const I18N_RX=[
@@ -587,6 +655,9 @@ const I18N_RX=[
   [/^(.+) · só tráfego pago$/,'$1 · solo tráfico pago'],
   [/^(.+) · só vendas de tráfego pago \(código de oferta\)$/,'$1 · solo ventas de tráfico pago (código de oferta)'],
   [/^(\d[\d\.]*) respondentes selecionados$/,'$1 respondientes seleccionados'],
+  [/^([\d\.]+) \/ ([\d\.]+) captados$/,'$1 / $2 captados'],
+  [/^(.+) · c\/ upsells$/,'$1 · c/ upsells'],
+  [/^Destino herdado da compra do ingresso \(Acceso VIP\) pelo e-mail do comprador · cruzamento feito na geração — e-mails não aparecem no dashboard · cobertura: (\d+)% das vendas com jornada identificada$/,'Destino heredado de la compra de la entrada (Acceso VIP) por el e-mail del comprador · cruce hecho en la generación — los e-mails no aparecen en el dashboard · cobertura: $1% de las ventas con jornada identificada'],
   [/^(.+) \/ Invest\.$/,'$1 / Invers.'],
   [/^Invest\. \/ vendas (.+)$/,'Invers. / ventas $1'],
 ];
@@ -658,7 +729,7 @@ const CPM_MEDIO=10.0;
 
 // ═══ ESTADO ═══
 let filtroLct=true, periodDays=30, dateI=null, dateF=null, showLabels=true, labelSize=8;
-let ovGran='dia', metaGran='dia', diaGran='dia', ovMetric2='cpv';
+let ovGran='dia', metaGran='dia', diaGran='dia';
 let metaCampSel=new Set(); // filtro de campanhas da página Meta Ads (vazio = todas)
 
 // ═══ AGRUPAMENTO DIÁRIO/SEMANAL/MENSAL ═══
@@ -686,11 +757,6 @@ function granBuckets(days,mode){
 function granSum(arr,groups){return groups.map(g=>{let s=0,has=false;g.forEach(i=>{if(arr?.[i]!=null){s+=arr[i];has=true;}});return has?r2(s):null;});}
 
 function setOvGran(g,btn){ovGran=g;btn.parentElement.querySelectorAll('.gp').forEach(b=>b.classList.toggle('active',b===btn));renderOverview();}
-function setOvMetric2(m,btn){
-  ovMetric2=m;
-  btn.parentElement.querySelectorAll('.gp').forEach(b=>b.classList.toggle('active',b===btn));
-  renderOverview();
-}
 function setMetaGran(g,btn){metaGran=g;btn.parentElement.querySelectorAll('.gp').forEach(b=>b.classList.toggle('active',b===btn));renderMeta();}
 
 // ═══ FILTRO DE CAMPANHAS · PÁGINA META ═══
@@ -918,17 +984,54 @@ function hotRawFiltered(){
 }
 const normUtm=s=>(s||'').toString().trim().toLowerCase();
 function hasUtmData(){return !!(HOT_RAW&&HOT_RAW.some&&HOT_RAW.some(r=>r.ut||r.um||r.uco));}
+function metaNameSets(){
+  // nomes canônicos (norm→original) de campanha/conjunto/anúncio, p/ resolver UTMs truncadas pelo SCK
+  const camp=new Map(), adset=new Map(), ad=new Map();
+  const adsetsByCamp={}, adsByCA={};
+  if(Array.isArray(META_RAW_CAMP)) META_RAW_CAMP.forEach(r=>{
+    const c=normUtm(r.c), a=normUtm(r.a), n=normUtm(r.an);
+    if(!c) return;
+    if(!camp.has(c)) camp.set(c, String(r.c));
+    if(a){
+      if(!adset.has(a)) adset.set(a, String(r.a));
+      (adsetsByCamp[c]=adsetsByCamp[c]||new Set()).add(a);
+      if(n){
+        if(!ad.has(n)) ad.set(n, String(r.an));
+        (adsByCA[c+'|||'+a]=adsByCA[c+'|||'+a]||new Set()).add(n);
+      }
+    }
+  });
+  return {camp,adset,ad,adsetsByCamp,adsByCA};
+}
+function resolveIn(val, keys, min=25){
+  // exato; senão prefixo ÚNICO (SCK trunca nomes longos). Ambíguo/curto → null.
+  if(!val) return null;
+  if(keys.has(val)) return val;
+  if(val.length<min) return null;
+  let hit=null;
+  for(const k of (keys instanceof Map?keys.keys():keys)){
+    if(k.startsWith(val)){ if(hit!==null) return null; hit=k; }
+  }
+  return hit;
+}
 function utmSalesIdx(){
   // Vendas Hotmart atribuídas por UTM: utm_term=campanha · utm_medium=conjunto · utm_content=anúncio
   // Conjuntos/anúncios usam CHAVE COMPOSTA (nomes de conjunto se repetem entre campanhas)
   const ok=s=>{const n=normUtm(s);return (!n||n.startsWith('{{'))?null:n;};
-  const add=(bucket,key,r)=>{const b=bucket[key]=bucket[key]||{q:0,v:0};if(!r.up)b.q++;b.v=r2(b.v+r.v);};
+  const add=(bucket,key,r)=>{const b=bucket[key]=bucket[key]||{q:0,v:0};b.q++;b.v=r2(b.v+r.v);};
   const idx={camp:{},adset:{},ad:{}};
+  const S=metaNameSets();
+  const vazio=new Set();
   hotRawFiltered().forEach(r=>{
-    const t=ok(r.ut), m=ok(r.um), c=ok(r.uco);
-    if(t) add(idx.camp, t, r);
-    if(t&&m) add(idx.adset, t+'|||'+m, r);
-    if(t&&m&&c) add(idx.ad, t+'|||'+m+'|||'+c, r);
+    const t0=ok(r.ut), m0=ok(r.um), c0=ok(r.uco);
+    const t=t0?resolveIn(t0,S.camp):null;                       // campanha (aceita truncada)
+    if(!t) return;
+    add(idx.camp, t, r);
+    const m=m0?resolveIn(m0, S.adsetsByCamp[t]||vazio):null;    // conjunto DENTRO da campanha
+    if(!m) return;
+    add(idx.adset, t+'|||'+m, r);
+    const c=c0?resolveIn(c0, S.adsByCA[t+'|||'+m]||vazio):null; // anúncio dentro do conjunto
+    if(c) add(idx.ad, t+'|||'+m+'|||'+c, r);
   });
   return idx;
 }
@@ -1048,19 +1151,29 @@ function renderOverview(){
     if(dateI&&dt<dateI)return false; if(dateF&&dt>dateF)return false;
     return true;
   });
-  const hotQtdF=rawKpi.filter(r=>!r.up).length;
+  const hotQtdF=rawKpi.length;
   const hotValF=r2(rawKpi.reduce((s,r)=>s+r.v,0));
-  const roasF=spendF>0&&hotValF>0?r2(hotValF/spendF):null;
+  // Upsells entram no Faturamento e ROAS do topo (sem classificação pago/orgânico:
+  // quando o filtro Tráfego Pago está ativo, ficam de fora para não misturar)
+  let fatUpsF=0;
+  if(!filtroPago&&Array.isArray(UPSELLS_RAW)&&UPSELLS_RAW.length){
+    const hoje=getHoje();
+    UPSELLS_RAW.forEach(r=>{
+      const dt=parseDayStr(r.d);
+      if(periodDays>0){const fim=new Date(hoje);if(periodDays===1)fim.setDate(fim.getDate()-1);fim.setHours(23,59,59);
+        const ini=new Date(fim);ini.setDate(ini.getDate()-(periodDays===1?0:periodDays-1));ini.setHours(0,0,0,0);
+        if(dt<ini||dt>fim) return;}
+      if(dateI&&dt<dateI) return; if(dateF&&dt>dateF) return;
+      fatUpsF=r2(fatUpsF+(r.v||0));
+    });
+  }
+  const hotTotF=r2(hotValF+fatUpsF);
+  const roasF=spendF>0&&hotTotF>0?r2(hotTotF/spendF):null;
   const cpaF=spendF>0&&purF>0?r2(spendF/purF):null;
   const cpaGeral=spendF>0&&hotQtdF>0?r2(spendF/hotQtdF):null;
-  const upsellRows=rawKpi.filter(r=>r.up);
-  const upsellVal=r2(upsellRows.reduce((s,r)=>s+r.v,0));
-  const upsellPct=hotValF>0&&upsellRows.length>0?r2(upsellVal/hotValF*100):null;
-  const ovKpisEl=document.getElementById('ovKpis');
-  ovKpisEl.className='krow mb14 '+(upsellRows.length>0?'k6':'k5');
-  ovKpisEl.innerHTML=`
+  document.getElementById('ovKpis').innerHTML=`
     <div class="kpi" style="--kc:#334155"><div class="kpi-lbl">Investimento</div><div class="kpi-val" style="font-size:16px;color:var(--text)">${fR(spendF)}</div><div class="kpi-sub">Meta Ads</div></div>
-    <div class="kpi" style="--kc:#059669"><div class="kpi-lbl">${t('Faturamento Total')}</div><div class="kpi-val" style="font-size:16px;color:#059669">${fR(hotValF)}</div><div class="kpi-sub">${FONTE_LABEL}</div></div>
+    <div class="kpi" style="--kc:#059669"><div class="kpi-lbl">Faturamento</div><div class="kpi-val" style="font-size:16px;color:#059669">${fR(hotTotF)}</div><div class="kpi-sub">${FONTE_LABEL}${fatUpsF>0?' · c/ upsells':''}</div></div>
     <div class="kpi" style="--kc:${roasCls(roasF)==='cg'?'#059669':roasCls(roasF)==='cw2'?'#d97706':'#dc2626'}">
       <div class="kpi-lbl">ROAS</div><div class="kpi-val ${roasCls(roasF)}">${roasF!=null?roasF.toFixed(2)+'x':'—'}</div>
       <div class="kpi-sub">${FONTE_LABEL} / Invest.</div></div>
@@ -1070,11 +1183,8 @@ function renderOverview(){
       <div class="kpi-sub" id="kpiVendasSub">${FONTE_LABEL}</div>
     </div>
     <div class="kpi" style="--kc:${cpaCls(cpaGeral)==='cg'?'#059669':cpaCls(cpaGeral)==='cw2'?'#d97706':'#dc2626'}">
-      <div class="kpi-lbl">CAC</div><div class="kpi-val ${cpaCls(cpaGeral)}">${fR(cpaGeral)}</div>
-      <div class="kpi-sub">Invest. / vendas ${FONTE_LABEL}</div></div>
-    ${upsellRows.length>0?`<div class="kpi" style="--kc:#334155">
-      <div class="kpi-lbl">${t('Faturamento Upsell')}</div><div class="kpi-val" style="font-size:16px;color:var(--text)">${fR(upsellVal)}</div>
-      <div class="kpi-sub">${upsellPct!=null?upsellPct.toFixed(1)+'% '+t('do total'):''}</div></div>`:''}`;
+      <div class="kpi-lbl">CPA</div><div class="kpi-val ${cpaCls(cpaGeral)}">${fR(cpaGeral)}</div>
+      <div class="kpi-sub">Invest. / vendas ${FONTE_LABEL}</div></div>`;
 
   // Recalcular funil a partir dos dados diários filtrados
   const mdF=getMD();
@@ -1094,7 +1204,7 @@ function renderOverview(){
     };
     // Funil pago: etapa "Compras" = vendas com SCK de tráfego pago (não o pixel do Meta)
     if(FUNIL_COMPRAS_PAGO){
-      funnelKpis.purchase=hotRawFiltered().filter(r=>!r.up&&(r.org||'').includes('Pago')).length;
+      funnelKpis.purchase=hotRawFiltered().filter(r=>(r.org||'').includes('Pago')).length;
     }
     const sp2=funnelKpis.spend,imp2=funnelKpis.impressions,lc2=funnelKpis.link_clicks;
     const pv2=funnelKpis.page_view,ic2=funnelKpis.init_checkout,pur2=funnelKpis.purchase;
@@ -1127,27 +1237,16 @@ function renderOverview(){
     (md?.days||[]).forEach((d,i)=>{metaSpend[d]=(metaSpend[d]||0)+(md.spend[i]||0);});
     const hm={},hval={};
     (hd?.days||[]).forEach((d,i)=>{hm[d]=(hm[d]||0)+(hd.qtd[i]||0);hval[d]=(hval[d]||0)+(hd.valor[i]||0);});
-    // Vendas (barras) e CAC: só produto principal (exclui upsells) — ROAS abaixo usa faturamento total (hval)
-    const hmMain={};
-    rawKpi.forEach(r=>{ if(!r.up) hmMain[r.d]=(hmMain[r.d]||0)+1; });
-    let vendas=days.map(d=>hmMain[d]||null);
-    let vendasVal=days.map(d=>hval[d]||null);
+    let vendas=days.map(d=>hm[d]||null);
     let invest=days.map(d=>metaSpend[d]||null);
     let ovLabels=days;
     if(ovGran!=='dia'){
       const bk=granBuckets(days,ovGran);
       ovLabels=bk.labels;
       vendas=granSum(vendas,bk.groups);
-      vendasVal=granSum(vendasVal,bk.groups);
       invest=granSum(invest,bk.groups);
     }
     const cpv=ovLabels.map((_,i)=>{const v=vendas[i]||0;const s=invest[i]||0;return v>0&&s>0?r2(s/v):null;});
-    const roasLine=ovLabels.map((_,i)=>{const rv=vendasVal[i]||0;const s=invest[i]||0;return s>0&&rv>0?r2(rv/s):null;});
-    const metric2IsRoas=ovMetric2==='roas';
-    const metric2Data=metric2IsRoas?roasLine:cpv;
-    const metric2Label=metric2IsRoas?'ROAS':'CAC';
-    const subEl2=document.getElementById('ovMainSub');
-    if(subEl2) subEl2.textContent=t(metric2IsRoas?'Vendas (barras laranja) · Invest. Meta (linha verde) · ROAS (linha preta)':'Vendas (barras laranja) · Invest. Meta (linha verde) · CAC (linha preta)');
 
     dc('chOvMain');
     CH['chOvMain']=new Chart(document.getElementById('chOvMain'),{
@@ -1155,13 +1254,13 @@ function renderOverview(){
         {label:t('Vendas'),data:vendas,backgroundColor:'rgba(249,115,22,.75)',borderRadius:3,type:'bar',yAxisID:'y1',
          datalabels:{...makeDatalabels('#f97316','',v=>v!=null?fN(v):null),display:ctx=>showLabels}},
         {label:t('Invest.'),data:invest,borderColor:'#059669',backgroundColor:'transparent',tension:.3,pointRadius:2,borderWidth:2,type:'line',spanGaps:true,datalabels:{display:false}},
-        {label:t(metric2Label),data:metric2Data,borderColor:'#111',borderDash:[5,3],backgroundColor:'transparent',tension:.3,pointRadius:2,borderWidth:1.5,type:'line',yAxisID:'y2',spanGaps:true,datalabels:{display:ctx=>showLabels,color:'#333',font:{size:labelSize,weight:'bold'},formatter:v=>v!=null?(metric2IsRoas?v.toFixed(2)+'x':MOEDA+v.toFixed(0)):null,anchor:'end',align:'top',offset:2,clip:false}},
+        {label:t('CPV'),data:cpv,borderColor:'#111',borderDash:[5,3],backgroundColor:'transparent',tension:.3,pointRadius:2,borderWidth:1.5,type:'line',yAxisID:'y2',spanGaps:true,datalabels:{display:ctx=>showLabels,color:'#333',font:{size:labelSize,weight:'bold'},formatter:v=>v!=null?MOEDA+v.toFixed(0):null,anchor:'end',align:'top',offset:2,clip:false}},
       ]},
       options:{...bo(),scales:{
         x:{ticks:{color:TXT(),font:bf,maxTicksLimit:14},grid:{color:GRID()}},
         y:{beginAtZero:true,ticks:{color:TXT(),font:bf,callback:v=>MOEDA+v.toLocaleString()},grid:{color:GRID()}},
         y1:{beginAtZero:true,position:'right',ticks:{color:'#f97316',font:bf},grid:{display:false},grace:'20%'},
-        y2:{position:'right',ticks:{color:'#555',font:bf,callback:v=>metric2IsRoas?v.toFixed(1)+'x':MOEDA+v.toFixed(0)},grid:{display:false},offset:true},
+        y2:{position:'right',ticks:{color:'#555',font:bf,callback:v=>MOEDA+v.toFixed(0)},grid:{display:false},offset:true},
       }}
     });
   }
@@ -1182,17 +1281,13 @@ function renderOverview(){
       return true;
     });
 
-    // Vendas "em geral" (origem, SCK, país, campanhas, CAC) = só produto principal.
-    // Upsells só entram no ROAS e no card dedicado "Vendas por Produto".
-    const rawFMain=rawF.filter(r=>!r.up);
-
     // Pago vs Orgânico (oculto se USAR_ORIGEM=false — ex: UTMs ainda não confiáveis)
     if(!USAR_ORIGEM){
       const co=document.getElementById('cardOrigem'); if(co) co.style.display='none';
       const om=document.getElementById('ovMid'); if(om) om.style.gridTemplateColumns='1fr';
     }
-    const pagoCnt=rawFMain.filter(r=>r.t&&r.t.includes('Pago')).length;
-    const orgCnt =rawFMain.filter(r=>r.t&&r.t.includes('rgân')).length;
+    const pagoCnt=rawF.filter(r=>r.t&&r.t.includes('Pago')).length;
+    const orgCnt =rawF.filter(r=>r.t&&r.t.includes('rgân')).length;
     dc('chOvOrigem');
     if(USAR_ORIGEM) CH['chOvOrigem']=new Chart(document.getElementById('chOvOrigem'),{
       type:'doughnut',
@@ -1206,16 +1301,16 @@ function renderOverview(){
     });
 
     // ── Painel Vendas por País (vendas Hotmart × invest Meta) ──
+    renderProdutos3();
     renderPaisPanel();
     renderLadosPanel();
-    renderProdutos3Panel(rawF);
 
-    // Card dinâmico: "Vendas por SCK" se o raw tiver SCK, senão "Vendas por Produto" — só produto principal
-    const temSck=rawFMain.some(r=>r.sck);
+    // Card dinâmico: "Vendas por SCK" se o raw tiver SCK, senão "Vendas por Produto"
+    const temSck=rawF.some(r=>r.sck);
     const tituloCard=document.querySelector('#cardProduto .cc-t')||document.getElementById('ccProdutoTitle');
     const keyFn=temSck?(r=>r.sck||'Direto / Não rastreado'):(r=>r.p);
     const prodMap={};
-    rawFMain.forEach(r=>{
+    rawF.forEach(r=>{
       const k=keyFn(r);
       if(!prodMap[k]) prodMap[k]={produto:k,pago:0,org:0,total:0,val:0};
       prodMap[k].total++;
@@ -1226,12 +1321,12 @@ function renderOverview(){
     const prods=Object.values(prodMap).sort((a,b)=>b.total-a.total||b.val-a.val);
     const el=document.getElementById('tPorProduto');
     const sub=document.getElementById('ccProdutoSub');
-    const temUtm=rawFMain.some(r=>r.us||r.um||r.uc||r.uco||r.ut);
+    const temUtm=rawF.some(r=>r.us||r.um||r.uc||r.uco||r.ut);
     if(tituloCard) tituloCard.textContent=temUtm?'Vendas por SCK':(temSck?'Vendas por SCK':'Vendas por Produto');
     if(sub) sub.textContent=(temUtm?'por parâmetro UTM · ':'')+(periodDays>0?`últimos ${periodDays}d`:'período total');
     if(el){
       if(!prods.length){el.innerHTML='<div style="padding:12px;color:var(--muted);font-size:12px">Sem vendas no período</div>';return;}
-      if(temUtm){ el.innerHTML=renderUtmTables(rawFMain); }
+      if(temUtm){ el.innerHTML=renderUtmTables(rawF); }
       else {
         el.innerHTML=`<table style="width:100%;border-collapse:collapse">
           <thead><tr style="background:var(--surface2)">
@@ -1250,39 +1345,248 @@ function renderOverview(){
   }
 }
 
-function renderProdutos3Panel(rawF){
-  const card=document.getElementById('cardProdutos3'); if(!card) return;
-  const map={};
-  (rawF||[]).forEach(r=>{
-    const k=r.p||'—';
-    if(!map[k]) map[k]={produto:k,qtd:0,val:0,upsell:!!r.up};
-    map[k].qtd++; map[k].val=r2(map[k].val+r.v);
+function renderGeral(){
+  const hoje=getHoje();
+  const inPer=d=>{
+    const dt=parseDayStr(d);
+    if(periodDays>0){const fim=new Date(hoje);if(periodDays===1)fim.setDate(fim.getDate()-1);fim.setHours(23,59,59);
+      const ini=new Date(fim);ini.setDate(ini.getDate()-(periodDays===1?0:periodDays-1));ini.setHours(0,0,0,0);
+      if(dt<ini||dt>fim) return false;}
+    if(dateI&&dt<dateI) return false; if(dateF&&dt>dateF) return false;
+    return true;
+  };
+  let inv=0;
+  if(Array.isArray(META_RAW_CAMP)) META_RAW_CAMP.forEach(r=>{
+    if(filtroLct&&!r.lct) return; if(!inPer(r.d)) return; inv=r2(inv+r.sp);
   });
-  const prods=Object.values(map).sort((a,b)=>b.val-a.val);
-  if(prods.length<=1){ card.style.display='none'; return; }
-  card.style.display='';
-  const upRows=prods.filter(p=>p.upsell);
-  const upQtd=upRows.reduce((a,p)=>a+p.qtd,0);
-  const upVal=r2(upRows.reduce((a,p)=>a+p.val,0));
-  const el=document.getElementById('tPorProdutos3'); if(!el) return;
-  el.innerHTML=`
-    ${upRows.length?`<div style="margin-bottom:8px;padding:8px 10px;background:var(--surface2);border-radius:6px;font-size:11px;display:flex;justify-content:space-between;align-items:center">
-      <span style="font-weight:700;color:var(--muted)">${t('Total Upsells')}</span>
-      <span><b>${fN(upQtd)}</b> ${t('vendas').toLowerCase()} · <b style="color:#059669">${fR(upVal)}</b></span>
-    </div>`:''}
-    <table style="width:100%;border-collapse:collapse">
-      <thead><tr style="background:var(--surface2)">
-        <th style="font-size:9px;text-transform:uppercase;letter-spacing:.8px;color:var(--muted);font-weight:700;padding:6px 10px;text-align:left">${t('Produto')}</th>
-        <th style="font-size:9px;text-transform:uppercase;letter-spacing:.8px;color:var(--muted);font-weight:700;padding:6px 10px;text-align:right">${t('Vendas')}</th>
-        <th style="font-size:9px;text-transform:uppercase;letter-spacing:.8px;color:#059669;font-weight:700;padding:6px 10px;text-align:right">${t('Faturamento')}</th>
-      </tr></thead>
-      <tbody>${prods.map(p=>`<tr>
-        <td style="font-size:11px;max-width:260px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;padding:6px 10px;border-bottom:1px solid var(--border)" title="${p.produto}">${p.upsell?'↳ ':''}${p.produto}</td>
-        <td style="font-size:11px;text-align:right;padding:6px 10px;font-family:monospace;border-bottom:1px solid var(--border);font-weight:700">${fN(p.qtd)}</td>
-        <td style="font-size:11px;text-align:right;padding:6px 10px;font-family:monospace;border-bottom:1px solid var(--border);color:#059669;font-weight:600">${fR(p.val)}</td>
-      </tr>`).join('')}</tbody>
-    </table>`;
+  const fx=v=>v!=null?v.toFixed(2)+'x':'—';
+  const AC=(typeof COR_ACENTO!=='undefined'&&COR_ACENTO)?COR_ACENTO:'#059669';
+  const PALETA={};
+  const linhas=[];
+  const cap=(HOT_RAW||[]).filter(r=>inPer(r.d));
+  const capNome=PRODUTO_CAPTACAO||('Captação · '+(FONTE_LABEL||'Ingresso'));
+  linhas.push({nome:capNome,unit:HOT_KPIS?.ticket_medio||0,q:cap.length,fat:r2(cap.reduce((a,r)=>a+(r.v||0),0)),rows:cap.map(r=>({d:r.d,v:r.v||0}))});
+  PALETA[capNome]='#94a3b8';
+  if(CERT&&Array.isArray(CERT_RAW)){
+    const c=CERT_RAW.filter(r=>inPer(r.d));
+    linhas.push({nome:CERT.nome||CERT.ap,unit:CERT.valor,q:c.length,fat:r2(c.length*CERT.valor),rows:c.map(r=>({d:r.d,v:CERT.valor}))});
+    PALETA[CERT.nome||CERT.ap]=AC;
+  }
+  if(Array.isArray(UPSELLS_INFO)&&Array.isArray(UPSELLS_RAW)){
+    const cores=['#d97706','#3b82f6','#8b5cf6'];
+    UPSELLS_INFO.forEach((u,i)=>{
+      const d=UPSELLS_RAW.filter(r=>r.p===u.nome&&inPer(r.d));
+      linhas.push({nome:u.nome,unit:u.valor,q:d.length,fat:r2(d.reduce((a,r)=>a+(r.v||0),0)),ups:1,rows:d.map(r=>({d:r.d,v:r.v||0}))});
+      PALETA[u.nome]=cores[i%cores.length];
+    });
+  }
+  const fatTot=r2(linhas.reduce((a,l)=>a+l.fat,0));
+  const roasFinal=inv>0&&fatTot>0?r2(fatTot/inv):null;
+  const cert=linhas.find(l=>CERT&&l.nome===(CERT.nome||CERT.ap));
+  const fatCert=cert?.fat||0;
+  const cpaCert=cert&&cert.q>0&&inv>0?r2(inv/cert.q):null;
+  // ── KPIs no padrão do relatório ──
+  const rc=roasCls(roasFinal); const rcol=rc==='cg'?'#059669':rc==='cw2'?'#d97706':'#dc2626';
+  document.getElementById('geralKpis').innerHTML=`
+    <div class="kpi" style="--kc:#334155"><div class="kpi-lbl">Investimento</div><div class="kpi-val" style="font-size:16px;color:var(--text)">${fR(inv)}</div><div class="kpi-sub">Meta Ads</div></div>
+    <div class="kpi" style="--kc:#059669"><div class="kpi-lbl">Faturamento Total</div><div class="kpi-val" style="font-size:16px;color:#059669">${fR(fatTot)}</div><div class="kpi-sub">${fN(linhas.reduce((a,l)=>a+l.q,0))} vendas · todos os produtos</div></div>
+    <div class="kpi" style="--kc:${rcol}"><div class="kpi-lbl">ROAS Final</div><div class="kpi-val ${rc}">${fx(roasFinal)}</div><div class="kpi-sub">TUDO / Invest.</div></div>`;
+  // ── Gráficos diários empilhados por produto ──
+  const diasSet=new Set(); linhas.forEach(l=>l.rows.forEach(r=>diasSet.add(r.d)));
+  const dias=[...diasSet].sort((a,b)=>parseDayStr(a)-parseDayStr(b));
+  // Vendas Diárias — barras empilhadas por produto (sem rótulos de dados)
+  if(CH['geral_v']){try{CH['geral_v'].destroy();}catch(e){}}
+  let ctx=document.getElementById('ch_geral_v');
+  if(ctx) CH['geral_v']=new Chart(ctx,{type:'bar',
+    data:{labels:dias,datasets:linhas.map(l=>{
+      const por={}; l.rows.forEach(r=>{por[r.d]=(por[r.d]||0)+1;});
+      return {label:l.nome.length>26?l.nome.slice(0,26)+'…':l.nome,
+              data:dias.map(d=>por[d]||0),
+              backgroundColor:(PALETA[l.nome]||'#94a3b8')+'d9',borderRadius:3,
+              datalabels:{display:ctx=>showLabels&&(ctx.dataset.data[ctx.dataIndex]||0)>0,
+                color:'#fff',font:{size:labelSize,weight:'bold'},
+                formatter:v=>v>0?fN(v):null,anchor:'center',align:'center',clip:true}};
+    })},
+    options:{responsive:true,maintainAspectRatio:false,
+      interaction:{mode:'index',intersect:false},
+      plugins:{legend:{position:'bottom',labels:{font:{size:9},boxWidth:10,padding:8}}},
+      scales:{x:{stacked:true},y:{stacked:true,beginAtZero:true,ticks:{precision:0}}}}});
+  // Faturamento Diário — linha verde do total (sem rótulos de dados)
+  if(CH['geral_f']){try{CH['geral_f'].destroy();}catch(e){}}
+  ctx=document.getElementById('ch_geral_f');
+  if(ctx){
+    const porF={}; linhas.forEach(l=>l.rows.forEach(r=>{porF[r.d]=r2((porF[r.d]||0)+(r.v||0));}));
+    CH['geral_f']=new Chart(ctx,{type:'line',
+      data:{labels:dias,datasets:[{label:'Faturamento',data:dias.map(d=>porF[d]||0),
+        borderColor:'#059669',backgroundColor:'rgba(5,150,105,.10)',fill:true,
+        tension:.3,pointRadius:2,pointHoverRadius:4,borderWidth:2}]},
+      options:{responsive:true,maintainAspectRatio:false,
+        interaction:{mode:'index',intersect:false},
+        plugins:{legend:{display:false},datalabels:{display:false},
+          tooltip:{callbacks:{label:c=>' '+fR(c.parsed.y)}}},
+        scales:{y:{beginAtZero:true,ticks:{callback:v=>fR(v)}}}}});
+  }
+  // ── Tabela ──
+  const th=(l,c)=>`<th style="font-size:8px;text-transform:uppercase;letter-spacing:.6px;color:${c||'var(--muted)'};font-weight:700;padding:5px 9px;text-align:right;white-space:nowrap">${l}</th>`;
+  const mono='font-size:10px;text-align:right;padding:5px 9px;font-family:monospace;border-bottom:1px solid var(--border);white-space:nowrap';
+  document.getElementById('tGeral').innerHTML=`<table style="width:100%;border-collapse:collapse;min-width:560px">
+    <thead><tr style="background:var(--surface2)">
+      <th style="font-size:8px;text-transform:uppercase;letter-spacing:.6px;color:var(--muted);font-weight:700;padding:5px 9px;text-align:left">Produto</th>
+      ${th('Valor unit.')}${th('Vendas')}${th('Fat.','#059669')}${th('% do Fat.')}
+    </tr></thead><tbody>
+    ${linhas.map(l=>`<tr>
+      <td style="font-size:10px;padding:5px 9px;border-bottom:1px solid var(--border);font-weight:700;white-space:nowrap"><span style="display:inline-block;width:8px;height:8px;border-radius:2px;background:${PALETA[l.nome]};margin-right:6px;vertical-align:middle"></span>${l.nome}${l.ups?' <span class="tag-ups">Upsell</span>':''}</td>
+      <td style="${mono}">${fR(l.unit)}</td>
+      <td style="${mono};font-weight:700">${fN(l.q)}</td>
+      <td style="${mono};color:#059669">${fR(l.fat)}</td>
+      <td style="${mono}">${fatTot>0?r2(l.fat/fatTot*100).toFixed(1)+'%':'—'}</td>
+    </tr>`).join('')}</tbody>
+    <tfoot><tr style="background:var(--surface2);font-weight:700;border-top:2px solid var(--border)">
+      <td style="font-size:9px;padding:7px 9px;font-weight:700;color:var(--muted2);text-transform:uppercase">Total</td>
+      <td class="num" style="${mono}"></td>
+      <td class="num" style="${mono};font-weight:700">${fN(linhas.reduce((a,l)=>a+l.q,0))}</td>
+      <td class="num" style="${mono};color:#059669;font-weight:700">${fR(fatTot)}</td>
+      <td class="num" style="${mono}">100%</td>
+    </tr>
+    <tr><td colspan="5" style="padding:4px 9px;font-size:9px;color:var(--muted2)">ROAS Final = faturamento de TODOS os produtos ÷ investimento Meta do lançamento · respeita o período selecionado</td></tr></tfoot>
+  </table>`;
 }
+function renderCert(){
+  if(!CERT||!Array.isArray(CERT_RAW)) return;
+  const hoje=getHoje();
+  const inPer=d=>{
+    const dt=parseDayStr(d);
+    if(periodDays>0){const fim=new Date(hoje);if(periodDays===1)fim.setDate(fim.getDate()-1);fim.setHours(23,59,59);
+      const ini=new Date(fim);ini.setDate(ini.getDate()-(periodDays===1?0:periodDays-1));ini.setHours(0,0,0,0);
+      if(dt<ini||dt>fim) return false;}
+    if(dateI&&dt<dateI) return false; if(dateF&&dt>dateF) return false;
+    return true;
+  };
+  const rows=CERT_RAW.filter(r=>inPer(r.d));
+  const V=CERT.valor||0;
+  const n=rows.length, fat=r2(n*V);
+  // Invest total do lançamento no período (raw de campanhas, escopo lct)
+  let inv=0;
+  if(Array.isArray(META_RAW_CAMP)) META_RAW_CAMP.forEach(r=>{
+    if(filtroLct&&!r.lct) return;
+    if(!inPer(r.d)) return;
+    inv=r2(inv+r.sp);
+  });
+  const cpa=n>0&&inv>0?r2(inv/n):null;
+  const roas=inv>0&&fat>0?r2(fat/inv):null;
+  const nPago=rows.filter(r=>r.org==='Pago').length;
+  const nOrg=rows.filter(r=>r.org==='Orgânico').length;
+  const nSem=n-nPago-nOrg;
+  const fx=v=>v!=null?v.toFixed(2)+'x':'—';
+  // KPIs
+  const capTot=(HOT_RAW||[]).length;
+  const txConv=capTot>0?r2(n/capTot*100):null;
+  document.getElementById('certKpis').innerHTML=`
+    <div class="kpi" style="--kc:#f97316"><div class="kpi-lbl">Vendas</div><div class="kpi-val" style="color:#f97316">${fN(n)}</div><div class="kpi-sub">${CERT.ap}</div></div>
+    <div class="kpi" style="--kc:#059669"><div class="kpi-lbl">Faturamento</div><div class="kpi-val" style="font-size:16px;color:#059669">${fR(fat)}</div><div class="kpi-sub">${fN(n)} × ${fR(V)}</div></div>
+    <div class="kpi" style="--kc:#3b82f6"><div class="kpi-lbl">Taxa de Conversão</div><div class="kpi-val" style="color:#3b82f6">${txConv!=null?txConv.toFixed(2)+'%':'—'}</div><div class="kpi-sub">${fN(n)} / ${fN(capTot)} captados</div></div>`;
+  // ── Tabelas SCK detalhadas (base da aba) ──
+  (function(){
+    const grid=document.getElementById('certUtmGrid'); if(!grid) return;
+    const dims=[{k:'us',t:'utm_source'},{k:'um',t:'utm_medium'},{k:'uc',t:'utm_campaign'},{k:'uco',t:'utm_content'},{k:'ut',t:'utm_term'}];
+    const tabs=dims.map(dim=>{
+      const map={};
+      rows.forEach(r=>{
+        const v=(r[dim.k]||'').toString().trim()||'(sem registro na base)';
+        (map[v]=map[v]||{n:v,q:0}).q++;
+      });
+      const vals=Object.values(map);
+      if(vals.length===1&&vals[0].n==='(sem registro na base)') return '';   // dimensão vazia
+      const rws=vals.sort((a,b)=>b.q-a.q);
+      return `<div class="utm-table">
+        <div class="utm-table-ttl">${dim.t}</div>
+        <table style="width:100%;border-collapse:collapse">
+          <thead><tr style="background:var(--surface2)">
+            <th style="font-size:8px;text-transform:uppercase;letter-spacing:.6px;color:var(--muted);font-weight:700;padding:5px 8px;text-align:left">Valor</th>
+            <th style="font-size:8px;text-transform:uppercase;letter-spacing:.6px;color:var(--muted);font-weight:700;padding:5px 8px;text-align:right">Vendas</th>
+            <th style="font-size:8px;text-transform:uppercase;letter-spacing:.6px;color:#059669;font-weight:700;padding:5px 8px;text-align:right">Fat.</th>
+          </tr></thead>
+          <tbody>${rws.map(r=>`<tr>
+            <td style="font-size:10px;max-width:210px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;padding:4px 8px;border-bottom:1px solid var(--border)${r.n.startsWith('(')?';font-style:italic;color:var(--muted)':''}" title="${r.n}">${r.n}</td>
+            <td style="font-size:10px;text-align:right;padding:4px 8px;font-family:monospace;border-bottom:1px solid var(--border);font-weight:700">${fN(r.q)}</td>
+            <td style="font-size:10px;text-align:right;padding:4px 8px;font-family:monospace;border-bottom:1px solid var(--border);color:#059669">${fR(r2(r.q*V))}</td>
+          </tr>`).join('')}</tbody>
+        </table>
+      </div>`;
+    }).join('');
+    grid.innerHTML=tabs||'<div style="padding:10px;font-size:11px;color:var(--muted)">Sem registros de origem na base</div>';
+  })();
+  // Vendas por dia
+  const porDia={};
+  rows.forEach(r=>{porDia[r.d]=(porDia[r.d]||0)+1;});
+  const dias=Object.keys(porDia).sort((a,b)=>parseDayStr(a)-parseDayStr(b));
+  if(CH['cert_dia']){try{CH['cert_dia'].destroy();}catch(e){}}
+  const ctx=document.getElementById('ch_cert_dia');
+  if(ctx) CH['cert_dia']=new Chart(ctx,{type:'bar',
+    data:{labels:dias,datasets:[{label:'Vendas',data:dias.map(d=>porDia[d]),backgroundColor:'#f97316cc',borderRadius:4,
+      datalabels:{...makeDatalabels('#f97316','',v=>v!=null&&v>0?fN(v):null)}}]},
+    options:{responsive:true,maintainAspectRatio:false,
+      interaction:{mode:'index',intersect:false},
+      plugins:{legend:{display:false}},scales:{y:{beginAtZero:true,ticks:{precision:0}}}}});
+  // País (invest via regiaoSpendIdx)
+  const spIdx=regiaoSpendIdx();
+  const mapP={};
+  rows.forEach(r=>{const k=(r.ps||'').trim()||'__NA__';(mapP[k]=mapP[k]||{ps:k,q:0}).q++;});
+  const prows=Object.values(mapP).map(b=>{
+    b.fat=r2(b.q*V);
+    b.sp=b.ps!=='__NA__'&&spIdx[b.ps]!=null?spIdx[b.ps]:null;
+    b.cpa=(b.sp&&b.q>0)?r2(b.sp/b.q):null;
+    b.roas=(b.sp&&b.fat>0)?r2(b.fat/b.sp):null;
+    return b;
+  }).sort((a,b)=>{if(a.ps==='__NA__')return 1;if(b.ps==='__NA__')return -1;return b.q-a.q;});
+  const th=(l,c)=>`<th style="font-size:8px;text-transform:uppercase;letter-spacing:.6px;color:${c||'var(--muted)'};font-weight:700;padding:5px 9px;text-align:right;white-space:nowrap">${l}</th>`;
+  const mono='font-size:10px;text-align:right;padding:5px 9px;font-family:monospace;border-bottom:1px solid var(--border);white-space:nowrap';
+  const thead=`<thead><tr style="background:var(--surface2)">
+    <th style="font-size:8px;text-transform:uppercase;letter-spacing:.6px;color:var(--muted);font-weight:700;padding:5px 9px;text-align:left">País</th>
+    ${th('Invest.')}${th('Vendas')}${th('Fat.','#059669')}${th('CPA')}${th('ROAS')}</tr></thead>`;
+  document.getElementById('tCertPais').innerHTML=`<table style="width:100%;border-collapse:collapse;min-width:560px">${thead}<tbody>
+    ${prows.map(b=>{const nome=b.ps==='__NA__'?'País não encontrado':(PAIS_NOME[b.ps]||b.ps);
+      const lbl=b.ps==='__NA__'?nome:(PAIS_NOME[b.ps]?(b.ps+' · '+nome):b.ps);
+      return `<tr><td style="font-size:10px;padding:5px 9px;border-bottom:1px solid var(--border);white-space:nowrap;font-weight:600">${lbl}</td>
+      <td style="${mono}">${b.sp!=null?fR(b.sp):'—'}</td>
+      <td style="${mono};font-weight:700">${fN(b.q)}</td>
+      <td style="${mono};color:#059669">${fR(b.fat)}</td>
+      <td style="${mono}">${b.cpa!=null?fR(b.cpa):'—'}</td>
+      <td class="${roasCls(b.roas)}" style="${mono}">${fx(b.roas)}</td></tr>`;}).join('')}</tbody></table>`;
+  // Destino (via jornada)
+  let spV=LADOS?LADOS.map(()=>0):[]; 
+  if(Array.isArray(LADOS)&&Array.isArray(META_RAW_CAMP)) META_RAW_CAMP.forEach(r=>{
+    if(filtroLct&&!r.lct) return; if(!inPer(r.d)) return;
+    const li=ladoDe(r.c); if(li>=0) spV[li]=r2(spV[li]+r.sp);
+  });
+  const lrows=(LADOS||[]).map((l,i)=>({nome:l.nome,sp:spV[i],q:rows.filter(r=>r.lado===l.nome).length}));
+  const lNA={nome:'Sem identificação',sp:null,q:rows.filter(r=>!r.lado||!(LADOS||[]).some(l=>l.nome===r.lado)).length};
+  const lall=[...lrows,...(lNA.q>0?[lNA]:[])];
+  lall.forEach(b=>{b.fat=r2(b.q*V);b.cpa=(b.sp&&b.q>0)?r2(b.sp/b.q):null;b.roas=(b.sp&&b.fat>0)?r2(b.fat/b.sp):null;});
+  document.getElementById('tCertLados').innerHTML=`<table style="width:100%;border-collapse:collapse;min-width:520px">
+    <thead><tr style="background:var(--surface2)">
+    <th style="font-size:8px;text-transform:uppercase;letter-spacing:.6px;color:var(--muted);font-weight:700;padding:5px 9px;text-align:left">Destino</th>
+    ${th('Invest.')}${th('Vendas')}${th('Fat.','#059669')}${th('CPA')}${th('ROAS')}</tr></thead><tbody>
+    ${lall.map(b=>`<tr><td style="font-size:10px;padding:5px 9px;border-bottom:1px solid var(--border);white-space:nowrap;font-weight:700">${b.nome}</td>
+      <td style="${mono}">${b.sp!=null?fR(b.sp):'—'}</td>
+      <td style="${mono};font-weight:700">${fN(b.q)}</td>
+      <td style="${mono};color:#059669">${fR(b.fat)}</td>
+      <td style="${mono}">${b.cpa!=null?fR(b.cpa):'—'}</td>
+      <td class="${roasCls(b.roas)}" style="${mono}">${fx(b.roas)}</td></tr>`).join('')}</tbody>
+    <tfoot><tr><td colspan="6" style="padding:4px 9px;font-size:9px;color:var(--muted2)">Destino herdado da compra do ingresso (Acceso VIP) pelo e-mail do comprador · cruzamento feito na geração — e-mails não aparecem no dashboard · cobertura: ${CERT.cobertura||0}% das vendas com jornada identificada</td></tr></tfoot></table>`;
+  // Ofertas
+  const mapO={};
+  rows.forEach(r=>{const k=r.of||'(sem código)';(mapO[k]=mapO[k]||{of:k,q:0}).q++;});
+  const orows=Object.values(mapO).sort((a,b)=>b.q-a.q);
+  document.getElementById('tCertOfertas').innerHTML=`<table style="width:100%;border-collapse:collapse;min-width:380px">
+    <thead><tr style="background:var(--surface2)">
+    <th style="font-size:8px;text-transform:uppercase;letter-spacing:.6px;color:var(--muted);font-weight:700;padding:5px 9px;text-align:left">Código</th>
+    ${th('Vendas')}${th('Fat.','#059669')}</tr></thead><tbody>
+    ${orows.map(b=>`<tr><td style="font-size:10px;padding:5px 9px;border-bottom:1px solid var(--border);font-family:monospace">${b.of}</td>
+      <td style="${mono};font-weight:700">${fN(b.q)}</td>
+      <td style="${mono};color:#059669">${fR(r2(b.q*V))}</td></tr>`).join('')}</tbody></table>`;
+}
+
 const PAIS_NOME={CO:'Colombia',MX:'México',US:'Estados Unidos',PE:'Perú',EC:'Ecuador',CL:'Chile',AR:'Argentina',
   CR:'Costa Rica',PT:'Portugal',GT:'Guatemala',ES:'España',DO:'Rep. Dominicana',PR:'Puerto Rico',CA:'Canadá',
   CH:'Suiza',HN:'Honduras',BR:'Brasil',BO:'Bolivia',UY:'Uruguay',PY:'Paraguay',VE:'Venezuela',PA:'Panamá'};
@@ -1302,6 +1606,47 @@ function regiaoSpendIdx(){
   });
   return idx;
 }
+function renderProdutos3(){
+  const card=document.getElementById('cardProdutos3'); if(!card) return;
+  if(!Array.isArray(UPSELLS_INFO)||!UPSELLS_INFO.length){card.style.display='none';return;}
+  card.style.display='';
+  const hoje=getHoje();
+  const inPer=d=>{
+    const dt=parseDayStr(d);
+    if(periodDays>0){const fim=new Date(hoje);if(periodDays===1)fim.setDate(fim.getDate()-1);fim.setHours(23,59,59);
+      const ini=new Date(fim);ini.setDate(ini.getDate()-(periodDays===1?0:periodDays-1));ini.setHours(0,0,0,0);
+      if(dt<ini||dt>fim) return false;}
+    if(dateI&&dt<dateI) return false; if(dateF&&dt>dateF) return false;
+    return true;
+  };
+  const linhas=[];
+  const cap=(HOT_RAW||[]).filter(r=>inPer(r.d));
+  linhas.push({nome:PRODUTO_CAPTACAO||('Captação · '+(FONTE_LABEL||'')),unit:HOT_KPIS?.ticket_medio||0,q:cap.length,fat:r2(cap.reduce((a,r)=>a+(r.v||0),0))});
+  UPSELLS_INFO.forEach(u=>{
+    const d=(UPSELLS_RAW||[]).filter(r=>r.p===u.nome&&inPer(r.d));
+    linhas.push({nome:u.nome,unit:u.valor,q:d.length,fat:r2(d.reduce((a,r)=>a+(r.v||0),0)),ups:1});
+  });
+  const fatTot=r2(linhas.reduce((a,l)=>a+l.fat,0));
+  const th=(l,c)=>`<th style="font-size:8px;text-transform:uppercase;letter-spacing:.6px;color:${c||'var(--muted)'};font-weight:700;padding:5px 9px;text-align:right;white-space:nowrap">${l}</th>`;
+  const mono='font-size:10px;text-align:right;padding:5px 9px;font-family:monospace;border-bottom:1px solid var(--border);white-space:nowrap';
+  document.getElementById('tProdutos3').innerHTML=`<table style="width:100%;border-collapse:collapse;min-width:520px">
+    <thead><tr style="background:var(--surface2)">
+      <th style="font-size:8px;text-transform:uppercase;letter-spacing:.6px;color:var(--muted);font-weight:700;padding:5px 9px;text-align:left">Produto</th>
+      ${th('Valor unit.')}${th('Vendas')}${th('Fat.','#059669')}
+    </tr></thead><tbody>
+    ${linhas.map(l=>`<tr>
+      <td style="font-size:10px;padding:5px 9px;border-bottom:1px solid var(--border);font-weight:700;max-width:340px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="${l.nome}">${l.nome}${l.ups?' <span class="tag-ups">Upsell</span>':''}</td>
+      <td style="${mono}">${fR(l.unit)}</td>
+      <td style="${mono};font-weight:700">${fN(l.q)}</td>
+      <td style="${mono};color:#059669">${fR(l.fat)}</td>
+    </tr>`).join('')}</tbody>
+    <tfoot><tr style="background:var(--surface2);font-weight:700;border-top:2px solid var(--border)">
+      <td style="font-size:9px;padding:7px 9px;font-weight:700;color:var(--muted2);text-transform:uppercase">Total</td>
+      <td class="num" style="${mono}"></td>
+      <td class="num" style="${mono};font-weight:700">${fN(linhas.reduce((a,l)=>a+l.q,0))}</td>
+      <td class="num" style="${mono};color:#059669;font-weight:700">${fR(fatTot)}</td>
+    </tr></tfoot></table>`;
+}
 function renderPaisPanel(){
   const card=document.getElementById('cardPais'); if(!card) return;
   const temPais=(HOT_RAW||[]).some(r=>r.ps)||(Array.isArray(REGIAO_RAW)&&REGIAO_RAW.length>0);
@@ -1310,7 +1655,6 @@ function renderPaisPanel(){
   // Base própria: período + datas custom, SEM o filtro Tráfego Pago (painel mostra tudo sempre)
   const hoje=getHoje();
   const base=(HOT_RAW||[]).filter(r=>{
-    if(r.up) return false;
     const dt=parseDayStr(r.d);
     if(periodDays>0){const fim=new Date(hoje);if(periodDays===1)fim.setDate(fim.getDate()-1);fim.setHours(23,59,59);
       const ini=new Date(fim);ini.setDate(ini.getDate()-(periodDays===1?0:periodDays-1));ini.setHours(0,0,0,0);
@@ -1424,7 +1768,6 @@ function renderLadosPanel(){
   const rows=LADOS.map((l,i)=>({nome:l.nome,sp:sp[i],qtd:0}));
   const na={nome:'Destino não identificado',sp:spNA>0?spNA:null,qtd:0};
   (HOT_RAW||[]).forEach(r=>{
-    if(r.up) return;
     if(!isPagoRow(r)) return;
     if(!inPeriodo(r.d)) return;
     const li=ladoDe([r.ut,r.um,r.uco,r.uc,r.us].join(' '));
@@ -1473,6 +1816,8 @@ function renderLadosPanel(){
 function renderUtmTables(rawF){
   const msIdx=metaSpendIdx();
   const adIdx=Object.keys(msIdx.ad).length?msIdx.ad:adSpendIdx();   // raw por anúncio; fallback tabelas (builds antigas)
+  const S=metaNameSets();
+  const canon={ut:S.camp, uc:S.camp, um:S.adset, uco:S.ad};         // UTMs truncadas → nome completo
   const dims=[
     {key:'of', titulo:'Código da Oferta', spend:null},
     {key:'uc', titulo:'utm_campaign',     spend:null},
@@ -1484,7 +1829,11 @@ function renderUtmTables(rawF){
   function tabela(dim){
     const map={};
     rawF.forEach(r=>{
-      const v=(r[dim.key]||'').toString().trim() || '(vazio / fora do relatório)';
+      let v=(r[dim.key]||'').toString().trim() || '(vazio / fora do relatório)';
+      if(canon[dim.key]&&!v.startsWith('(')&&!v.startsWith('{{')){
+        const rs=resolveIn(normUtm(v), canon[dim.key]);
+        if(rs) v=canon[dim.key].get(rs);   // exibe o nome completo (mescla truncadas)
+      }
       if(!map[v]) map[v]={n:v,qtd:0,val:0,isPago:false};
       map[v].qtd++; map[v].val=r2(map[v].val+r.v);
       if((r.org||'').includes('Pago')) map[v].isPago=true;
@@ -1537,7 +1886,7 @@ function renderMeta(){
     if(dateI&&dt<dateI)return false; if(dateF&&dt>dateF)return false;
     return true;
   });
-  const hotQtdMK=rawMK.filter(r=>!r.up).length;
+  const hotQtdMK=rawMK.length;
   const hotValMK=r2(rawMK.reduce((s,r)=>s+r.v,0));
   // Faturamento, ROAS, Vendas e CPA são FIXOS (escopo total do lançamento, só período):
   // usar o daily SEM filtro de campanha para não inflar ROAS/CPA ao filtrar
@@ -2215,7 +2564,7 @@ function renderDiarioCharts(){
   let purCv=md.purchase;
   if(usaPagoCv){
     const map={};
-    HOT_RAW.forEach(r=>{ if(!r.up&&isPagoRow(r)) map[r.d]=(map[r.d]||0)+1; });
+    HOT_RAW.forEach(r=>{ if(isPagoRow(r)) map[r.d]=(map[r.d]||0)+1; });
     purCv=md.days.map(d=>map[d]||0);
   }
 
@@ -2473,12 +2822,23 @@ function toggleLabels(el){
   rerenderActive();
 }
 
+(function(){
+  if(CERT){
+    const b=document.getElementById('sbCert'); if(b) b.style.display='';
+    const l=document.getElementById('sbCertLbl'); if(l) l.textContent=CERT.ap||'Produto';
+  }
+  if(CERT||(Array.isArray(UPSELLS_INFO)&&UPSELLS_INFO.length)){
+    const g=document.getElementById('sbGeral'); if(g) g.style.display='';
+  }
+})();
 function rerenderActive(){
   const p=document.querySelector('.page-section.active')?.id?.replace('page-','');
   if(p==='overview') renderOverview();
   if(p==='meta')     renderMeta();
   if(p==='diario')   renderDiario();
   if(p==='pesquisa') renderPesquisa();
+  if(p==='cert')     renderCert();
+  if(p==='geral')    renderGeral();
   setTimeout(()=>{Object.values({...CH,...PC}).forEach(c=>{try{c.resize();}catch(e){}});},60);
 }
 
@@ -2488,13 +2848,15 @@ function goPage(p,btn){
   document.querySelectorAll('.sb-item').forEach(e=>e.classList.remove('active'));
   document.getElementById('page-'+p).classList.add('active');
   if(btn) btn.classList.add('active');
-  const titles={overview:'Overview',meta:'Meta Ads',diario:'Métricas Diárias',pesquisa:'Pesquisa'};
+  const titles={overview:'Captação',meta:'Meta Ads',diario:'Métricas Diárias',pesquisa:'Pesquisa',cert:(CERT?.ap||'Produto'),geral:'Geral'};
   document.getElementById('pageTitle').textContent=titles[p]||p;
   updatePagoToggleVis(p);
   if(p==='overview') renderOverview();
   if(p==='meta')     renderMeta();
   if(p==='diario')   renderDiario();
   if(p==='pesquisa') renderPesquisa();
+  if(p==='cert')     renderCert();
+  if(p==='geral')    renderGeral();
   setTimeout(()=>{Object.values({...CH,...PC}).forEach(c=>{try{c.resize();}catch(e){}});},80);
   if(window.innerWidth<=768) closeSb();
 }
@@ -2561,7 +2923,7 @@ window.addEventListener('resize', ajustarPaddingContent);
 // ═══ i18n síncrono: embrulha os renders pra traduzir no mesmo frame (sem flash de PT) ═══
 (function(){
   const wrap=f=>function(){const r=f.apply(this,arguments); if(LANG==='es'){try{translateAll();}catch(e){}} return r;};
-  ['renderOverview','renderMeta','renderDiario','renderDiarioCharts','renderPesquisa','buildFunnel','renderSeg','renderAds','buildTable'].forEach(n=>{
+  ['renderOverview','renderMeta','renderDiario','renderDiarioCharts','renderPesquisa','buildFunnel','renderSeg','renderAds','buildTable','renderCert','renderGeral'].forEach(n=>{
     try{ if(typeof self[n]==='function') self[n]=wrap(self[n]); }catch(e){}
   });
   if(LANG==='es'){try{translateAll();}catch(e){}}
