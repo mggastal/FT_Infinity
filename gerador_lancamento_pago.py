@@ -11,8 +11,8 @@ from pathlib import Path
 SHEET_ID         = "1oL-nT38uS-lWN0aYpfLHGuxzUM18PFxIZVM7OxIKeag"
 TEMPLATE_FILE    = "dashboard_lancamento_pago.html"
 OUTPUT_FILE      = "index.html"
-NOME_CLIENTE     = "Lancemos02"
-LOGO_LETRA       = "L"
+NOME_CLIENTE     = "Longevidad Feminina"
+LOGO_LETRA       = "LF"
 COR_ACENTO       = "#252F26"
 LANCAMENTO_COD   = "CERT-ELF"      # filtra campanhas pelo código; "" = ver tudo
 USAR_PESQUISA    = True            # False = oculta aba Pesquisa no menu e dashboard
