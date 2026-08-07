@@ -24,7 +24,7 @@ USAR_RODAPE      = False           # False = oculta o rodapé "Desenvolvido por 
 PRODUTOS_HOTMART = ["Acceso VIP: Taller El Negocio de la Longevidad Femenina"]  # SÓ este produto; "ALL"/[] = todos
 # ── Classificação Pago vs Orgânico: pelo CÓDIGO DA OFERTA (fonte da verdade) ──
 # Vendas nessas ofertas = tráfego pago; todo o resto = orgânico (resolve UTMs vazias do pago)
-OFERTAS_PAGO     = ["kdpeaqhn","zzoec1tg","804s6rul","txloa2x3","4kvrtrqw"]
+OFERTAS_PAGO     = ["kdpeaqhn","zzoec1tg","804s6rul","4kvrtrqw","txloa2x3","mw36twfc","fcpjeeik"]
 # (SCK ainda é lido para as tabelas de UTM, mas NÃO define mais a origem)
 SCK_SRC_PAGO     = ["fb","facebook","ig","instagram"]
 # Valor por venda: como a Hotmart traz moedas misturadas, cada venda conta um valor FIXO.
@@ -54,10 +54,10 @@ UPSELLS = [{"oferta":"mw36twfc","nome":"Recetario Zonas Azules","valor":19},
 LADOS_COMPARATIVO = [{"nome":"Vanessa","tokens":["VANESSA","VANE"]},
                      {"nome":"Ana","tokens":["ANA"]}]
 
-CPA_BOM          = 30
-CPA_MEDIO        = 40
-ROAS_BOM         = 1.0
-ROAS_MEDIO       = 0.6
+CPA_BOM          = 14
+CPA_MEDIO        = 21
+ROAS_BOM         = 0.69
+ROAS_MEDIO       = 0.5
 
 # Metas do funil — define cores (verde/amarelo/vermelho) nas taxas
 # Cada métrica: [valor_bom, valor_medio] — acima do bom = verde, entre = amarelo, abaixo = vermelho
@@ -72,8 +72,8 @@ TX_CK_MEDIO      = 20.0
 TX_CONV_BOM      = 7.0    # Taxa Conversão LP ≥ 7% → verde | 5-7% → amarelo | <5% → vermelho
 TX_CONV_MEDIO    = 5.0
 
-CPM_BOM          = 7.0    # CPM ≤ 7 → verde | 7-12 → amarelo | >12 → vermelho (menor = melhor)
-CPM_MEDIO        = 12.0
+CPM_BOM          = 40.0    # CPM ≤ 7 → verde | 7-12 → amarelo | >12 → vermelho (menor = melhor)
+CPM_MEDIO        = 60.0
 
 # ══════════════════════════════════════════════════════
 def sheet_url(t): return f"https://docs.google.com/spreadsheets/d/{SHEET_ID}/gviz/tq?tqx=out:csv&sheet={t}"
