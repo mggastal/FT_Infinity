@@ -64,6 +64,7 @@ body{background:var(--bg);color:var(--text);font-family:'DM Sans',sans-serif;fon
 /* KPI */
 .krow{display:grid;gap:10px;margin-bottom:14px;}
 .k5{grid-template-columns:repeat(5,1fr);}
+.k6{grid-template-columns:repeat(6,1fr);}
 .k4{grid-template-columns:repeat(4,1fr);}
 .k3{grid-template-columns:repeat(3,1fr);}
 .kpi{background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:13px 15px;position:relative;overflow:hidden;box-shadow:var(--sh);}
@@ -615,6 +616,8 @@ const I18N={
   'Vendas por Dia':'Ventas por Día','CPA Real':'CPA Real','ROAS Real':'ROAS Real',
   'Vendas Diárias':'Ventas Diarias','Faturamento Diário':'Facturación Diaria','Origem':'Origen',
   'Taxa de Conversão':'Tasa de Conversión','captados':'captados',
+  'CAC':'CAC','Faturamento Upsell':'Facturación Upsell',
+  'V. Pagas':'V. Pagas','V. Orgânicas':'V. Orgánicas',
   'Origem Detalhada (SCK da captura)':'Origen Detallado (SCK de la captura)',
   'base preenchida na aba hotmart-CertificacionELF':'base completada en la pestaña hotmart-CertificacionELF',
   '(sem registro na base)':'(sin registro en la base)','sem origem':'sin origen',
@@ -656,6 +659,7 @@ const I18N_RX=[
   [/^(.+) · só vendas de tráfego pago \(código de oferta\)$/,'$1 · solo ventas de tráfico pago (código de oferta)'],
   [/^(\d[\d\.]*) respondentes selecionados$/,'$1 respondientes seleccionados'],
   [/^([\d\.]+) \/ ([\d\.]+) captados$/,'$1 / $2 captados'],
+  [/^([\d\.,]+)% do total$/,'$1% del total'],
   [/^(.+) · c\/ upsells$/,'$1 · c/ upsells'],
   [/^Destino herdado da compra do ingresso \(Acceso VIP\) pelo e-mail do comprador · cruzamento feito na geração — e-mails não aparecem no dashboard · cobertura: (\d+)% das vendas com jornada identificada$/,'Destino heredado de la compra de la entrada (Acceso VIP) por el e-mail del comprador · cruce hecho en la generación — los e-mails no aparecen en el dashboard · cobertura: $1% de las ventas con jornada identificada'],
   [/^(.+) \/ Invest\.$/,'$1 / Invers.'],
@@ -1156,9 +1160,10 @@ function renderOverview(){
   // Upsells entram no Faturamento e ROAS do topo (sem classificação pago/orgânico:
   // quando o filtro Tráfego Pago está ativo, ficam de fora para não misturar)
   let fatUpsF=0;
-  if(!filtroPago&&Array.isArray(UPSELLS_RAW)&&UPSELLS_RAW.length){
+  if(Array.isArray(UPSELLS_RAW)&&UPSELLS_RAW.length){
     const hoje=getHoje();
     UPSELLS_RAW.forEach(r=>{
+      if(filtroPago&&r.org!=='Pago') return;   // upsells classificados: só os Pago entram no modo Tráfego Pago
       const dt=parseDayStr(r.d);
       if(periodDays>0){const fim=new Date(hoje);if(periodDays===1)fim.setDate(fim.getDate()-1);fim.setHours(23,59,59);
         const ini=new Date(fim);ini.setDate(ini.getDate()-(periodDays===1?0:periodDays-1));ini.setHours(0,0,0,0);
@@ -1171,9 +1176,12 @@ function renderOverview(){
   const roasF=spendF>0&&hotTotF>0?r2(hotTotF/spendF):null;
   const cpaF=spendF>0&&purF>0?r2(spendF/purF):null;
   const cpaGeral=spendF>0&&hotQtdF>0?r2(spendF/hotQtdF):null;
-  document.getElementById('ovKpis').innerHTML=`
+  const showUpsCard=fatUpsF>0;
+  const elOvK=document.getElementById('ovKpis');
+  elOvK.className='krow '+(showUpsCard?'k6':'k5')+' mb14';
+  elOvK.innerHTML=`
     <div class="kpi" style="--kc:#334155"><div class="kpi-lbl">Investimento</div><div class="kpi-val" style="font-size:16px;color:var(--text)">${fR(spendF)}</div><div class="kpi-sub">Meta Ads</div></div>
-    <div class="kpi" style="--kc:#059669"><div class="kpi-lbl">Faturamento</div><div class="kpi-val" style="font-size:16px;color:#059669">${fR(hotTotF)}</div><div class="kpi-sub">${FONTE_LABEL}${fatUpsF>0?' · c/ upsells':''}</div></div>
+    <div class="kpi" style="--kc:#059669"><div class="kpi-lbl">Faturamento Total</div><div class="kpi-val" style="font-size:16px;color:#059669">${fR(hotTotF)}</div><div class="kpi-sub">${FONTE_LABEL}</div></div>
     <div class="kpi" style="--kc:${roasCls(roasF)==='cg'?'#059669':roasCls(roasF)==='cw2'?'#d97706':'#dc2626'}">
       <div class="kpi-lbl">ROAS</div><div class="kpi-val ${roasCls(roasF)}">${roasF!=null?roasF.toFixed(2)+'x':'—'}</div>
       <div class="kpi-sub">${FONTE_LABEL} / Invest.</div></div>
@@ -1183,8 +1191,9 @@ function renderOverview(){
       <div class="kpi-sub" id="kpiVendasSub">${FONTE_LABEL}</div>
     </div>
     <div class="kpi" style="--kc:${cpaCls(cpaGeral)==='cg'?'#059669':cpaCls(cpaGeral)==='cw2'?'#d97706':'#dc2626'}">
-      <div class="kpi-lbl">CPA</div><div class="kpi-val ${cpaCls(cpaGeral)}">${fR(cpaGeral)}</div>
-      <div class="kpi-sub">Invest. / vendas ${FONTE_LABEL}</div></div>`;
+      <div class="kpi-lbl">CAC</div><div class="kpi-val ${cpaCls(cpaGeral)}">${fR(cpaGeral)}</div>
+      <div class="kpi-sub">Invest. / vendas ${FONTE_LABEL}</div></div>
+    ${showUpsCard?`<div class="kpi" style="--kc:#d97706"><div class="kpi-lbl">Faturamento Upsell</div><div class="kpi-val" style="font-size:16px;color:var(--text)">${fR(fatUpsF)}</div><div class="kpi-sub">${hotTotF>0?r2(fatUpsF/hotTotF*100).toFixed(1):'—'}% do total</div></div>`:''}`;
 
   // Recalcular funil a partir dos dados diários filtrados
   const mdF=getMD();
@@ -1620,11 +1629,15 @@ function renderProdutos3(){
     return true;
   };
   const linhas=[];
-  const cap=(HOT_RAW||[]).filter(r=>inPer(r.d));
-  linhas.push({nome:PRODUTO_CAPTACAO||('Captação · '+(FONTE_LABEL||'')),unit:HOT_KPIS?.ticket_medio||0,q:cap.length,fat:r2(cap.reduce((a,r)=>a+(r.v||0),0))});
+  const cap=hotRawFiltered();   // mesmo filtro dos KPIs: período + datas + Tráfego Pago
+  linhas.push({nome:PRODUTO_CAPTACAO||('Captação · '+(FONTE_LABEL||'')),unit:HOT_KPIS?.ticket_medio||0,q:cap.length,
+    pg:cap.filter(r=>r.org==='Pago').length,og:cap.filter(r=>r.org==='Orgânico').length,
+    fat:r2(cap.reduce((a,r)=>a+(r.v||0),0))});
   UPSELLS_INFO.forEach(u=>{
-    const d=(UPSELLS_RAW||[]).filter(r=>r.p===u.nome&&inPer(r.d));
-    linhas.push({nome:u.nome,unit:u.valor,q:d.length,fat:r2(d.reduce((a,r)=>a+(r.v||0),0)),ups:1});
+    const d=(UPSELLS_RAW||[]).filter(r=>r.p===u.nome&&inPer(r.d)&&(!filtroPago||r.org==='Pago'));
+    linhas.push({nome:u.nome,unit:u.valor,q:d.length,
+      pg:d.filter(r=>r.org==='Pago').length,og:d.filter(r=>r.org==='Orgânico').length,
+      fat:r2(d.reduce((a,r)=>a+(r.v||0),0)),ups:1});
   });
   const fatTot=r2(linhas.reduce((a,l)=>a+l.fat,0));
   const th=(l,c)=>`<th style="font-size:8px;text-transform:uppercase;letter-spacing:.6px;color:${c||'var(--muted)'};font-weight:700;padding:5px 9px;text-align:right;white-space:nowrap">${l}</th>`;
@@ -1632,17 +1645,19 @@ function renderProdutos3(){
   document.getElementById('tProdutos3').innerHTML=`<table style="width:100%;border-collapse:collapse;min-width:520px">
     <thead><tr style="background:var(--surface2)">
       <th style="font-size:8px;text-transform:uppercase;letter-spacing:.6px;color:var(--muted);font-weight:700;padding:5px 9px;text-align:left">Produto</th>
-      ${th('Valor unit.')}${th('Vendas')}${th('Fat.','#059669')}
+      ${th('Valor unit.')}${filtroPago?'':th('V. Pagas')+th('V. Orgânicas')}${th('Vendas')}${th('Fat.','#059669')}
     </tr></thead><tbody>
     ${linhas.map(l=>`<tr>
       <td style="font-size:10px;padding:5px 9px;border-bottom:1px solid var(--border);font-weight:700;max-width:340px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="${l.nome}">${l.nome}${l.ups?' <span class="tag-ups">Upsell</span>':''}</td>
       <td style="${mono}">${fR(l.unit)}</td>
+      ${filtroPago?'':`<td style="${mono}">${fN(l.pg||0)}</td><td style="${mono}">${fN(l.og||0)}</td>`}
       <td style="${mono};font-weight:700">${fN(l.q)}</td>
       <td style="${mono};color:#059669">${fR(l.fat)}</td>
     </tr>`).join('')}</tbody>
     <tfoot><tr style="background:var(--surface2);font-weight:700;border-top:2px solid var(--border)">
       <td style="font-size:9px;padding:7px 9px;font-weight:700;color:var(--muted2);text-transform:uppercase">Total</td>
       <td class="num" style="${mono}"></td>
+      ${filtroPago?'':`<td class="num" style="${mono}">${fN(linhas.reduce((a,l)=>a+(l.pg||0),0))}</td><td class="num" style="${mono}">${fN(linhas.reduce((a,l)=>a+(l.og||0),0))}</td>`}
       <td class="num" style="${mono};font-weight:700">${fN(linhas.reduce((a,l)=>a+l.q,0))}</td>
       <td class="num" style="${mono};color:#059669;font-weight:700">${fR(fatTot)}</td>
     </tr></tfoot></table>`;
