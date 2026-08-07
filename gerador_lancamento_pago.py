@@ -11,7 +11,7 @@ from pathlib import Path
 SHEET_ID         = "1oL-nT38uS-lWN0aYpfLHGuxzUM18PFxIZVM7OxIKeag"
 TEMPLATE_FILE    = "dashboard_lancamento_pago.html"
 OUTPUT_FILE      = "index.html"
-NOME_CLIENTE     = "Longevidad Feminina"
+NOME_CLIENTE     = "Lancemos02"
 LOGO_LETRA       = "L"
 COR_ACENTO       = "#252F26"
 LANCAMENTO_COD   = "CERT-ELF"      # filtra campanhas pelo código; "" = ver tudo
@@ -22,17 +22,9 @@ FUNIL_COMPRAS_PAGO = True          # True = etapa "Compras" do funil usa vendas 
 USAR_LOGO        = False           # False = não usa logo.png (sidebar mostra só a letra; sem favicon)
 USAR_RODAPE      = False           # False = oculta o rodapé "Desenvolvido por Sobé Estratégias"
 PRODUTOS_HOTMART = ["Acceso VIP: Taller El Negocio de la Longevidad Femenina"]  # SÓ este produto; "ALL"/[] = todos
-# ── Upsells do produto principal — identificados pelo CÓDIGO DA OFERTA (não pelo nome do   ──
-# produto, pois o mesmo nome pode existir sob outro código de oferta em outro lançamento).
-# Cada upsell soma ao Faturamento/ROAS/CPA geral do funil (como o produto principal) e também
-# aparece destacado à parte no card "Vendas por Produto". "valor" = preço fixo por venda (US$).
-UPSELLS_HOTMART  = [
-    {"nome": "🥗 Recetario de Zonas Azules", "oferta": "mw36twfc", "valor": 19},
-    {"nome": "Diagnóstico de Posicionamiento", "oferta": "fcpjeeik", "valor": 9},
-]
 # ── Classificação Pago vs Orgânico: pelo CÓDIGO DA OFERTA (fonte da verdade) ──
 # Vendas nessas ofertas = tráfego pago; todo o resto = orgânico (resolve UTMs vazias do pago)
-OFERTAS_PAGO     = ["kdpeaqhn","zzoec1tg","804s6rul","4kvrtrqw","txloa2x3","mw36twfc","fcpjeeik"]
+OFERTAS_PAGO     = ["kdpeaqhn","zzoec1tg","804s6rul"]
 # (SCK ainda é lido para as tabelas de UTM, mas NÃO define mais a origem)
 SCK_SRC_PAGO     = ["fb","facebook","ig","instagram"]
 # Valor por venda: como a Hotmart traz moedas misturadas, cada venda conta um valor FIXO.
@@ -48,15 +40,24 @@ IDIOMA_PADRAO    = "es"            # idioma inicial do relatório: "es" ou "pt"
 VENDAS_EXTRAS    = [{"data":"12/07/2026","qtd":33}]
 EXTRAS_LABEL     = "Fora do relatório"   # rótulo no card Vendas por SCK
 EXTRAS_ORIGEM    = "Orgânico"            # Pago | Orgânico (entra no gráfico de origem)
+# Produto PRINCIPAL do lançamento (alto ticket) — página própria com atribuição por jornada.
+# Vendas dele não têm SCK; origem/destino são herdados da compra do Acceso VIP pelo E-MAIL do
+# comprador (cruzamento feito AQUI no gerador — e-mails nunca vão para o HTML público).
+PRODUTO_CERT = {"nome":"Longeva - Certificación ELF","apelido":"Ventas Certificación","valor":799}
+CERT_INICIO  = "05/08/2026"   # vendas ANTES desta data são teste — ignoradas
+# Upsells do lançamento — identificados pelo CÓDIGO DE OFERTA (o produto pode vender por outras ofertas fora do lançamento)
+UPSELLS = [{"oferta":"mw36twfc","nome":"Recetario Zonas Azules","valor":19},
+           {"oferta":"fcpjeeik","nome":"Diagnóstico de Posicionamiento","valor":9}]
+
 # Comparativo de especialistas/lados — casa tokens no nome da campanha (invest) e nos UTMs (vendas).
 # Ordem importa: o primeiro lado que casar vence. [] = painel oculto.
 LADOS_COMPARATIVO = [{"nome":"Vanessa","tokens":["VANESSA","VANE"]},
                      {"nome":"Ana","tokens":["ANA"]}]
 
-CPA_BOM          = 14
-CPA_MEDIO        = 21
-ROAS_BOM         = 0.69
-ROAS_MEDIO       = 0.5
+CPA_BOM          = 30
+CPA_MEDIO        = 40
+ROAS_BOM         = 1.0
+ROAS_MEDIO       = 0.6
 
 # Metas do funil — define cores (verde/amarelo/vermelho) nas taxas
 # Cada métrica: [valor_bom, valor_medio] — acima do bom = verde, entre = amarelo, abaixo = vermelho
@@ -71,8 +72,8 @@ TX_CK_MEDIO      = 20.0
 TX_CONV_BOM      = 7.0    # Taxa Conversão LP ≥ 7% → verde | 5-7% → amarelo | <5% → vermelho
 TX_CONV_MEDIO    = 5.0
 
-CPM_BOM          = 40.0    # CPM ≤ 7 → verde | 7-12 → amarelo | >12 → vermelho (menor = melhor)
-CPM_MEDIO        = 60.0
+CPM_BOM          = 7.0    # CPM ≤ 7 → verde | 7-12 → amarelo | >12 → vermelho (menor = melhor)
+CPM_MEDIO        = 12.0
 
 # ══════════════════════════════════════════════════════
 def sheet_url(t): return f"https://docs.google.com/spreadsheets/d/{SHEET_ID}/gviz/tq?tqx=out:csv&sheet={t}"
@@ -82,6 +83,7 @@ URL_PES  = sheet_url("Pesquisa")
 URL_GA   = sheet_url("breakdown-gender-age")
 URL_PT   = sheet_url("breakdown-platform")
 URL_RG   = sheet_url("breakdown-regiao")
+URL_CERT = sheet_url("hotmart-CertificacionELF")
 
 def to_num(s):
     """Converte série para numérico — detecta formato BR (1.234,56) ou US (1234.56)"""
@@ -149,6 +151,7 @@ def g_on(df, col, name, default=""):
     c = col.get(name)
     return df[c] if c is not None else pd.Series([default]*len(df), index=df.index)
 
+_DF_HOT_ALL = None
 def load_hotmart():
     """Lê a aba 'hotmart' (export Hotmart 'Sales History'), filtra produto e classifica origem via SCK."""
     print("  Lendo hotmart...")
@@ -162,38 +165,26 @@ def load_hotmart():
     st = g_on(df,col,"Transaction Status").astype(str).str.upper().str.strip()
     df = df[st.isin(["APPROVED","COMPLETE","COMPLETED"])].copy()
 
-    # ── Produto (nome bruto da planilha) e código da oferta (para achar os upsells) ──
+    # ── Produto: só o(s) configurado(s) ──
     df["Produto"] = g_on(df,col,"Product Name").astype(str)
-    df["oferta"]  = g_on(df,col,"Offer Code").astype(str).str.strip().str.lower().replace({"nan":""})
-
-    # ── Produto principal: filtra pelo NOME configurado ──
+    df["_email"] = g_on(df,col,"Buyer Email").astype(str).str.strip().str.lower()
+    global _DF_HOT_ALL
+    _DF_HOT_ALL = df.copy()   # todas as vendas aprovadas (p/ página do produto principal)
     if PRODUTOS_HOTMART and PRODUTOS_HOTMART != ["ALL"]:
-        principal = df[df["Produto"].isin(PRODUTOS_HOTMART)].copy()
-        if len(principal)==0:
+        df = df[df["Produto"].isin(PRODUTOS_HOTMART)]
+        if len(df)==0:
             print(f"     ⚠ nenhuma venda do produto {PRODUTOS_HOTMART} — confira o nome exato")
-    else:
-        principal = df.copy()
-    principal["valor"] = float(VALOR_FIXO) if VALOR_FIXO is not None else to_num(g_on(principal,col,"Price"))
-    principal["is_upsell"] = False
-
-    # ── Upsells: filtra pelo CÓDIGO DA OFERTA (evita misturar com outras vendas do mesmo nome) ──
-    upsell_frames = []
-    for u in (UPSELLS_HOTMART or []):
-        sub = df[df["oferta"] == str(u["oferta"]).strip().lower()].copy()
-        if len(sub)==0:
-            print(f"     ⚠ nenhuma venda do upsell '{u['nome']}' (oferta {u['oferta']}) — confira o código")
-            continue
-        sub["valor"] = float(u["valor"])
-        sub["is_upsell"] = True
-        upsell_frames.append(sub)
-        print(f"     + upsell '{u['nome']}': {len(sub)} vendas × ${u['valor']:g}")
-
-    df = pd.concat([principal]+upsell_frames, ignore_index=True) if upsell_frames else principal
 
     # ── Data ──
     df["date"] = pd.to_datetime(g_on(df,col,"Order Date"), errors="coerce")
     df = df.dropna(subset=["date"])
     df["date"] = df["date"].dt.normalize()
+
+    # ── Valor: fixo por venda (moeda mista na planilha é ignorada) ──
+    if VALOR_FIXO is not None:
+        df["valor"] = float(VALOR_FIXO)
+    else:
+        df["valor"] = to_num(g_on(df,col,"Price"))
 
     # ── SCK → labels/UTMs (informativo) ──
     sck = g_on(df,col,"Tracking Source SCK").apply(parse_sck)
@@ -205,7 +196,7 @@ def load_hotmart():
 
     # ── ORIGEM pelo código da oferta (fonte da verdade) ──
     pago_set = {c.strip().lower() for c in OFERTAS_PAGO}
-    # (coluna "oferta" já calculada acima, antes do split principal/upsells)
+    df["oferta"] = g_on(df,col,"Offer Code").astype(str).str.strip().str.lower().replace({"nan":""})
     # País do comprador (coluna "País")
     pais_col = next((c for c in df.columns if _norm_pais(c) in ("pais","country","pais do comprador")), None)
     df["pais"] = df[pais_col].apply(pais_code) if pais_col else ""
@@ -224,8 +215,7 @@ def load_hotmart():
             extra_rows.append({"date":d.normalize(),"valor":val_extra,
                 "Produto":(PRODUTOS_HOTMART[0] if PRODUTOS_HOTMART and PRODUTOS_HOTMART!=["ALL"] else "Acceso VIP"),
                 "src":"","med":"","camp_sck":"","u_content":"","u_term":"","oferta":"","pais":"",
-                "Organico ou Pago":EXTRAS_ORIGEM,"origem_sck":EXTRAS_ORIGEM,"sck_label":EXTRAS_LABEL,
-                "is_upsell":False})
+                "Organico ou Pago":EXTRAS_ORIGEM,"origem_sck":EXTRAS_ORIGEM,"sck_label":EXTRAS_LABEL})
     if extra_rows:
         df = pd.concat([df, pd.DataFrame(extra_rows)], ignore_index=True)
         print(f"     + {len(extra_rows)} vendas extras (fora do relatório) em {', '.join(sorted({e['data'] for e in VENDAS_EXTRAS}))}")
@@ -242,8 +232,6 @@ def load_hotmart():
 def hotmart_process(df):
     total=df["valor"].sum(); qtd=len(df)
     ticket=round(float(total/qtd),2) if qtd>0 else 0
-    is_ups=df["is_upsell"].fillna(False).astype(bool) if "is_upsell" in df.columns else pd.Series([False]*len(df))
-    qtd_principal=int((~is_ups).sum())  # vendas só do produto principal (exclui upsells) — usado pro CAC "de fato"
     orig_col=next((c for c in df.columns if "organico" in c.lower() or "orgânico" in c.lower() or "pago" in c.lower()), "Organico ou Pago")
     pago=df[df[orig_col].str.contains("Pago",na=False,case=False)]
     org =df[df[orig_col].str.contains("Orgân",na=False,case=False)]
@@ -272,7 +260,7 @@ def hotmart_process(df):
             por_sck.append({"sck":str(lab),"qtd":int(len(gdf)),"val":round(float(gdf["valor"].sum()),2),
                             "origem":str(gdf["origem_sck"].iloc[0]) if "origem_sck" in gdf.columns else ""})
         por_sck.sort(key=lambda x:(-x["qtd"],-x["val"]))
-    kpis={"total":round(float(total),2),"qtd":int(qtd),"qtd_principal":qtd_principal,"ticket_medio":ticket,
+    kpis={"total":round(float(total),2),"qtd":int(qtd),"ticket_medio":ticket,
           "pago_qtd":int(len(pago)),"pago_val":round(float(pago["valor"].sum()),2),
           "org_qtd": int(len(org)), "org_val": round(float(org["valor"].sum()),2),
           "por_produto": por_produto, "por_sck": por_sck}
@@ -300,8 +288,7 @@ def hotmart_process(df):
             "uco": str(r.get("u_content","")),
             "ut": str(r.get("u_term","")),
             "of": str(r.get("oferta","")),
-            "ps": str(r.get("pais","")),
-            "up": bool(r.get("is_upsell", False)) if pd.notna(r.get("is_upsell", False)) else False
+            "ps": str(r.get("pais",""))
         })
     return kpis, daily, raw
 
@@ -579,6 +566,130 @@ def meta_breakdowns(df):
     result['_camps']=camps_bd
     return result
 
+# ══ PRODUTO PRINCIPAL (Certificación) — atribuição por jornada ══
+def load_cert():
+    """Vendas do produto principal. Origem/destino: 1º pela coluna de origem preenchida na aba
+    dedicada 'hotmart-CertificacionELF' (UTMs da captura); 2º herdada da compra do Acceso VIP
+    via e-mail. Exporta apenas agregados — e-mails nunca vão para o HTML."""
+    if not PRODUTO_CERT or _DF_HOT_ALL is None: return None, []
+    # ── fonte: aba dedicada; fallback aba hotmart ──
+    try:
+        cert = pd.read_csv(URL_CERT)
+        cert.columns = [str(c).strip() for c in cert.columns]
+        print(f"  Cert: aba dedicada ({len(cert)} linhas)")
+    except Exception as e:
+        print(f"  Cert: aba dedicada indisponível — usando aba hotmart")
+        cert = _DF_HOT_ALL.copy()
+    col = {c.replace("Sales History ","").strip(): c for c in cert.columns}
+    st = g_on(cert,col,"Transaction Status").astype(str).str.upper().str.strip()
+    cert = cert[st.isin(["APPROVED","COMPLETE","COMPLETED"])].copy()
+    cert["Produto"] = g_on(cert,col,"Product Name").astype(str)
+    cert = cert[cert["Produto"]==PRODUTO_CERT["nome"]]
+    if len(cert)==0:
+        print(f"  Cert: nenhuma venda de {PRODUTO_CERT['nome']}"); return None, []
+    cert["date"] = pd.to_datetime(g_on(cert,col,"Order Date"), errors="coerce")
+    cert = cert.dropna(subset=["date"])
+    if CERT_INICIO:
+        ini = pd.to_datetime(CERT_INICIO, dayfirst=True)
+        antes = int((cert["date"] < ini).sum())
+        cert = cert[cert["date"] >= ini]
+        if antes: print(f"  Cert: {antes} venda(s) de teste antes de {CERT_INICIO} ignorada(s)")
+    cert["_email"] = g_on(cert,col,"Buyer Email").astype(str).str.strip().str.lower()
+    pais_col = next((c for c in cert.columns if _norm_pais(c) in ("pais","country","pais do comprador")), None)
+    cert["ps"] = cert[pais_col].apply(pais_code) if pais_col else ""
+    cert["of"] = g_on(cert,col,"Offer Code").astype(str).str.strip().str.lower()
+    # coluna de origem manual = última coluna "...Tracking Source SCK*" (a duplicada vira SCK.1)
+    sck_cols = [c for c in cert.columns if c.startswith("Sales History Tracking Source SCK")]
+    org_col = sck_cols[-1] if sck_cols else None
+
+    # ── jornada via e-mail (compras do Acceso) ──
+    df = _DF_HOT_ALL
+    colA = {c.replace("Sales History ","").strip(): c for c in df.columns}
+    ev = df[df["Produto"].isin(PRODUTOS_HOTMART)].copy()
+    ev["oferta"] = g_on(ev,colA,"Offer Code").astype(str).str.strip().str.lower()
+    ev["_sck"]  = g_on(ev,colA,"Tracking Source SCK").astype(str)
+    def lado_txt(t):
+        for l in (LADOS_COMPARATIVO or []):
+            if any(tk.upper() in t for tk in l["tokens"]): return l["nome"]
+        return ""
+    jorn = {}
+    pago_set = {o.lower() for o in OFERTAS_PAGO}
+    for _,r in ev.iterrows():
+        em = r["_email"]
+        if not em or em=="nan": continue
+        j = jorn.setdefault(em, {"pago":False,"lado":""})
+        if r["oferta"] in pago_set: j["pago"] = True
+        if not j["lado"]:
+            d = parse_sck(r["_sck"])
+            j["lado"] = lado_txt(" ".join(str(v) for v in d.values()).upper())
+
+    # ── classificação da coluna de origem manual ──
+    PAGO_SRC = {"ig","fb","an"}
+    VAZIO_UTM = {"us":"","um":"","uc":"","uco":"","ut":""}
+    def class_sck(txt):
+        """→ (origem, lado, utms{us,um,uc,uco,ut}) a partir da coluna de origem da base."""
+        t = str(txt or "").strip()
+        if not t or t.lower()=="nan": return "", "", dict(VAZIO_UTM)
+        lado = lado_txt(t.upper())
+        if t.lower().startswith("meta-ads"):    # formato "meta-ads.Funil.Campanha"
+            parts = [p.strip() for p in t.split(".") if p.strip()]
+            u = {"us":"meta-ads","um":parts[1] if len(parts)>=3 else "",
+                 "uc":parts[-1] if len(parts)>=2 else "","uco":"","ut":""}
+            return "Pago", lado, u
+        q = dict(_up.parse_qsl(_html.unescape(t)))
+        if q:
+            u = {"us":(q.get("utm_source") or "").strip(),
+                 "um":(q.get("utm_medium") or "").strip(),
+                 "uc":(q.get("utm_campaign") or "").strip(),
+                 "uco":(q.get("utm_content") or "").strip(),
+                 "ut":(q.get("utm_term") or "").strip()}
+            srcv = u["us"].lower()
+            if srcv in PAGO_SRC or srcv.startswith("{{"): return "Pago", lado, u
+            return "Orgânico", lado, u
+        u = dict(VAZIO_UTM); u["uc"] = t[:60]     # texto livre → registra como campanha
+        return "Orgânico", lado, u
+
+    rows=[]; n_base=n_jorn=n_sem=0; n_pago=n_org=0
+    for _,r in cert.iterrows():
+        org,lado,utms = class_sck(r[org_col]) if org_col else ("","",{"us":"","um":"","uc":"","uco":"","ut":""})
+        if org:
+            n_base+=1
+        else:
+            j = jorn.get(r["_email"])
+            if j:
+                org = "Pago" if j["pago"] else "Orgânico"
+                lado = lado or j["lado"]; n_jorn+=1
+            else:
+                n_sem+=1
+        if org=="Pago": n_pago+=1
+        elif org=="Orgânico": n_org+=1
+        rows.append({"d":r["date"].strftime("%d/%m"),"ps":str(r["ps"] or ""),
+                     "of":str(r["of"]),"org":org,"lado":lado, **utms})
+    info={"nome":PRODUTO_CERT["nome"],"ap":PRODUTO_CERT["apelido"],"valor":float(PRODUTO_CERT["valor"])}
+    cob=(n_base+n_jorn)/len(rows)*100 if rows else 0
+    info["cobertura"]=round(cob)
+    print(f"  Cert: {len(rows)} vendas | Pago {n_pago} · Orgânico {n_org} · sem origem {n_sem}")
+    print(f"        origem: {n_base} pela base da aba · {n_jorn} pela jornada (e-mail) · cobertura {cob:.0f}%")
+    return info, rows
+
+# ══ UPSELLS (por código de oferta) ═══════════════════════
+def load_upsells():
+    if not UPSELLS or _DF_HOT_ALL is None: return [], []
+    df=_DF_HOT_ALL
+    col={c.replace("Sales History ","").strip(): c for c in df.columns}
+    df=df.copy()
+    df["of2"]=g_on(df,col,"Offer Code").astype(str).str.strip().str.lower()
+    df["date"]=pd.to_datetime(g_on(df,col,"Order Date"),errors="coerce")
+    info=[]; rows=[]
+    for u in UPSELLS:
+        d=df[(df["of2"]==u["oferta"].lower())].dropna(subset=["date"])
+        info.append({"nome":u["nome"],"valor":float(u["valor"]),"oferta":u["oferta"]})
+        for _,r in d.iterrows():
+            rows.append({"d":r["date"].strftime("%d/%m"),"p":u["nome"],"v":float(u["valor"])})
+    resumo=" · ".join(f"{u['nome']}: {sum(1 for r in rows if r['p']==u['nome'])}" for u in UPSELLS)
+    print(f"  Upsells: {resumo}")
+    return info, rows
+
 # ══ REGIÃO (spend por país) ═══════════════════════════
 def load_regiao():
     """Lê breakdown-regiao (país 2L) e exporta raw diário {d, ps, lct, sp, pur}."""
@@ -656,7 +767,7 @@ def replace_js_const(html, name, value):
     if not found[0]: print(f"  AVISO: não encontrou const {name}")
     return new_html
 
-def inject_all(tpl, meta_k, meta_d, meta_dc, meta_raw_c, meta_t, meta_bd, hot_k, hot_d, hot_raw, regiao_raw, pes, ticket):
+def inject_all(tpl, meta_k, meta_d, meta_dc, meta_raw_c, meta_t, meta_bd, hot_k, hot_d, hot_raw, regiao_raw, cert_info, cert_raw, ups_info, ups_raw, pes, ticket):
     html=Path(tpl).read_text(encoding="utf-8")
     html=replace_js_const(html,"META_KPIS",    meta_k)
     html=replace_js_const(html,"META_DAILY",       meta_d)
@@ -669,6 +780,11 @@ def inject_all(tpl, meta_k, meta_d, meta_dc, meta_raw_c, meta_t, meta_bd, hot_k,
     html=replace_js_const(html,"HOT_RAW",      hot_raw)
     html=replace_js_const(html,"REGIAO_RAW",   regiao_raw)
     html=replace_js_const(html,"LADOS",        LADOS_COMPARATIVO if LADOS_COMPARATIVO else None)
+    html=replace_js_const(html,"CERT",         cert_info)
+    html=replace_js_const(html,"CERT_RAW",     cert_raw)
+    html=replace_js_const(html,"UPSELLS_INFO", ups_info if ups_info else None)
+    html=replace_js_const(html,"PRODUTO_CAPTACAO", PRODUTOS_HOTMART[0] if PRODUTOS_HOTMART and PRODUTOS_HOTMART!=["ALL"] else None)
+    html=replace_js_const(html,"UPSELLS_RAW",  ups_raw)
     html=replace_js_const(html,"PESQUISA", pes if USAR_PESQUISA else False)
     html=replace_js_const(html,"TICKET_MEDIO", ticket)
     # Data de geração em Brasília (UTC-3) para o filtro de período correto
@@ -725,14 +841,16 @@ def main():
 
     print("\n[PESQUISA]")
     df_pes=load_pesquisa()
-    pes=pesquisa_process(df_pes, hot_k["qtd_principal"])
+    pes=pesquisa_process(df_pes, hot_k["qtd"])
     print(f"  ✓ {pes['total']} respostas")
 
     print("\n[HTML]")
     if not Path(TEMPLATE_FILE).exists():
         print(f"  ERRO: {TEMPLATE_FILE} não encontrado"); return
     regiao_raw=load_regiao()
-    html=inject_all(TEMPLATE_FILE,m_k,m_d,m_dc,m_raw,m_t,m_bd,hot_k,hot_d,h_raw,regiao_raw,pes,ticket)
+    cert_info,cert_raw=load_cert()
+    ups_info,ups_raw=load_upsells()
+    html=inject_all(TEMPLATE_FILE,m_k,m_d,m_dc,m_raw,m_t,m_bd,hot_k,hot_d,h_raw,regiao_raw,cert_info,cert_raw,ups_info,ups_raw,pes,ticket)
     Path(OUTPUT_FILE).write_text(html,encoding="utf-8")
     print(f"  ✓ {OUTPUT_FILE} ({len(html)//1024}KB)")
 
