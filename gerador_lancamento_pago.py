@@ -653,6 +653,19 @@ def load_cert():
     pais_col = next((c for c in cert.columns if _norm_pais(c) in ("pais","country","pais do comprador")), None)
     cert["ps"] = cert[pais_col].apply(pais_code) if pais_col else ""
     cert["of"] = g_on(cert,col,"Offer Code").astype(str).str.strip().str.lower()
+    # ── colunas do cruzamento manual na aba (cliente): código de origem da captação + Pago/Org/VSL/Não encontrado ──
+    col_cod = next((c for c in cert.columns if "code origem" in c.lower()), None)
+    col_o4  = next((c for c in cert.columns if "origem paga" in c.lower()), None)
+    def _map_o4(v):
+        t = str(v or "").strip().lower()
+        if not t or t=="nan": return "Não encontrado"
+        if t.startswith("pago"): return "Pago"
+        if t.startswith("org"):  return "Orgânico"
+        if "vsl" in t:           return "VSL"
+        return "Não encontrado"
+    cert["cod"] = (cert[col_cod].apply(lambda v: "" if str(v).strip().lower() in ("","nan","none") else str(v).strip().lower())
+                   if col_cod else "")
+    cert["o4"]  = (cert[col_o4].apply(_map_o4) if col_o4 else "Não encontrado")
     # coluna de origem manual = última coluna "...Tracking Source SCK*" (a duplicada vira SCK.1)
     sck_cols = [c for c in cert.columns if c.startswith("Sales History Tracking Source SCK")]
     org_col = sck_cols[-1] if sck_cols else None
@@ -675,11 +688,15 @@ def load_cert():
         if org=="Pago": n_pago+=1
         elif org=="Orgânico": n_org+=1
         rows.append({"d":r["date"].strftime("%d/%m"),"ps":str(r["ps"] or ""),
-                     "of":str(r["of"]),"org":org,"lado":lado, **utms})
+                     "of":str(r["of"]),"org":org,"lado":lado,
+                     "cod":str(r["cod"] or ""),"o4":str(r["o4"]), **utms})
     info={"nome":PRODUTO_CERT["nome"],"ap":PRODUTO_CERT["apelido"],"valor":float(PRODUTO_CERT["valor"])}
     cob=(n_base+n_jorn)/len(rows)*100 if rows else 0
     info["cobertura"]=round(cob)
     print(f"  Cert: {len(rows)} vendas | Pago {n_pago} · Orgânico {n_org} · sem origem {n_sem}")
+    from collections import Counter as _C
+    _d4=_C(r["o4"] for r in rows)
+    print(f"        cruzamento da aba: " + " · ".join(f"{k} {v}" for k,v in _d4.most_common()))
     print(f"        origem: {n_base} pela base da aba · {n_jorn} pela jornada (e-mail) · cobertura {cob:.0f}%")
     return info, rows
 
