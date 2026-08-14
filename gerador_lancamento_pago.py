@@ -86,6 +86,62 @@ URL_RG   = sheet_url("breakdown-regiao")
 URL_CERT = sheet_url("hotmart-CertificacionELF")
 URL_CRIAT= sheet_url("Criativos_x_Links")   # aba opcional: colA = nome do criativo, colB = link
 
+# Links fixos dos criativos (FALLBACK embutido — funciona mesmo sem a aba na planilha).
+# A aba "Criativos_x_Links" (colA nome, colB link), se existir, COMPLEMENTA/SOBREPÕE esta lista.
+CRIATIVOS_LINKS_FIXOS = {
+    "VD1CERT-ELF-VANE-JUL-2026FEED": "https://drive.google.com/file/d/1U0obq7KMH-ei8UpDNxR8yY_cYVJkJy80/view",
+    "VD2CERT-ELF-VANE-JUL-2026FEED": "https://drive.google.com/file/d/1J4MVtKTYltfB1eUw32Rv3uhzw87NhZ6C/view",
+    "VD3CERT-ELF-VANE-JUL-2026FEED": "https://drive.google.com/file/d/1fMT6fCoBwV7wx8vSvmofDqiPPjDxDw2S/view",
+    "VD4CERT-ELF-VANE-JUL-2026FEED": "https://drive.google.com/file/d/1rTuLCHxqMFr2CE3m0rbsVkfKFngZWQ31/view",
+    "VD5CERT-ELF-VANE-JUL-2026FEED": "https://drive.google.com/file/d/1sjdvS3EgFbIB2fn8NtnNxUh5dEfekLjj/view",
+    "VD6CERT-ELF-VANE-JUL-2026FEED": "https://drive.google.com/file/d/1YEbUjNdHU_w__JlKC6GGF3GgRqy4sAU5/view",
+    "VD7CERT-ELF-VANE-JUL-2026FEED": "https://drive.google.com/file/d/1oh1SkrC4ZAr-W03XR5vEbotlvSKzrqZE/view",
+    "VD8CERT-ELF-VANE-JUL-2026FEED": "https://drive.google.com/file/d/1WWY2disJUdHuAzjpJIq3liRXeLiZ3vHx/view",
+    "VD9CERT-ELF-VANE-JUL-2026FEED": "https://drive.google.com/file/d/1hdNNcddHptx-zRG1CKzXcHEqdJ237xXt/view",
+    "VD10CERT-ELF-VANE-JUL-2026FEED": "https://drive.google.com/file/d/1Hn9khQklzQ1r8siOtA6G1q8dRQEAwcIT/view",
+    "VD11CERT-ELF-VANE-JUL-2026FEED": "https://drive.google.com/file/d/1dLGrcrJmV1Z4oUyioBYzP69ZIx6iV4Yu/view",
+    "VD12CERT-ELF-VANE-JUL-2026FEED": "https://drive.google.com/file/d/1ruxcqZfrqE9NUFNgBzKbLFbyESYABulO/view",
+    "VD13CERT-ELF-VANE-JUL-2026FEED": "https://drive.google.com/file/d/14AoyyOsGrtwACl-UCg6UOT0WimQQTghN/view",
+    "VD14CERT-ELF-VANE-JUL-2026FEED": "https://drive.google.com/file/d/1k1do9WbM6ta2O6s49EP3ZIHg1Rc8Eg5_/view",
+    "VD15CERT-ELF-VANE-JUL-2026FEED": "https://drive.google.com/file/d/1FYyuOoBzDCFgNVPxssHIuR-ZuLi-Zii4/view",
+    "VD16CERT-ELF-VANE-JUL-2026FEED": "https://drive.google.com/file/d/14hs0-v-QQ3jiN6EIE3Ms0IBdgbmcmqQF/view",
+    "VD17CERT-ELF-VANE-JUL-2026FEED": "https://drive.google.com/file/d/1HFecetzKjuI7MR0DN8Y6i81qbvdoTBAA/view?usp=sharing",
+    "VD18CERT-ELF-VANE-JUL-2026FEED": "https://drive.google.com/file/d/1lVMxJl-yRXn3SvTXzXmGOl9T3LNRrh1h/view",
+    "VD19CERT-ELF-VANE-JUL-2026FEED": "https://drive.google.com/file/d/13OgredZsvbFn5H4Qu42pcMlNAMAtCaU-/view",
+    "VD20CERT-ELF-VANE-JUL-2026FEED": "https://drive.google.com/file/d/1qT1JCEwO9tx8ThpdbdFKu8hq6v-bNc6z/view",
+    "VD21CERT-ELF-VANE-JUL-2026FEED": "https://drive.google.com/file/d/1weo8I758k9WmvxxHT3c_GBpecvmVTUme/view",
+    "IMG1CERT-ELF-VANE-JUL-2026FEED": "https://drive.google.com/file/d/1GbkWM7mlYumGXSOhI40Zl2oZSim1x9uq/view",
+    "IMG2CERT-ELF-VANE-JUL-2026FEED": "https://drive.google.com/file/d/1HxpPFG0KNE5-Q_EuesMnNpAqIbltm1NG/view",
+    "IMG3CERT-ELF-VANE-JUL-2026FEED": "https://drive.google.com/file/d/1vXfIWzpnyYyNffRi69B4FveIcGYcArsD/view",
+    "IMG4CERT-ELF-VANE-JUL-2026FEED": "https://drive.google.com/file/d/1_T_mcn5egQ6XVqa6v3w6KZBiOJZoaIPI/view",
+    "IMG5CERT-ELF-VANE-JUL-2026FEED": "https://drive.google.com/file/d/1EH40RB3JAoSVJDrYmBDN7SpceEW0j71D/view",
+    "IMG1CERT-ELF-VANE-JUL-2026-ULT-OPORTFEED": "https://drive.google.com/file/d/1IfOM31qonRbylnu5DIhRs5QJ4n2YnWic/view",
+    "IMG2CERT-ELF-VANE-JUL-2026-ULT-OPORTFEED": "https://drive.google.com/file/d/1yF7-Voa3k_yLsEV07OM3qv_AvSGSU2fl/view",
+    "IMG3CERT-ELF-VANE-JUL-2026-F-7-DIASFEED": "https://drive.google.com/file/d/1l8r4oqgTzKHMPq5kvKuYrOFxztUi40Na/view",
+    "IMG4CERT-ELF-VANE-JUL-2026-F-6-DIASFEED": "https://drive.google.com/file/d/1UkST1srWpXAA8wkoq7f6QCswQAHTHKvC/view",
+    "IMG5CERT-ELF-VANE-JUL-2026-F-5-DIASFEED": "https://drive.google.com/file/d/1D3lcH-lyXduBWDyEUevQpbTwtC_zd8-l/view",
+    "IMG6CERT-ELF-VANE-JUL-2026-F-4-DIASFEED": "https://drive.google.com/file/d/1A1zIO0T2sDVwuDqwz2eu6qDmoYCCIEEL/view",
+    "IMG7CERT-ELF-VANE-JUL-2026-F-3-DIASFEED": "https://drive.google.com/file/d/1F-_8-KwKq4O1dS9OcGLrB5OI_QDXndms/view",
+    "IMG8CERT-ELF-VANE-JUL-2026-F-2-DIASFEED": "https://drive.google.com/file/d/10wgB8yDaid_v5gAWaSWMEJNtSYaBXekA/view",
+    "IMG9CERT-ELF-VANE-JUL-2026-F-1-DIASFEED": "https://drive.google.com/file/d/1CPHGAPv-y7uYIhdr7gqrf074RQbghvOt/view",
+    "IMG10CERT-ELF-VANE-JUL-2026-F-7-DIASFEED": "https://drive.google.com/file/d/1oNQlMGbE9KxCntoR2XDs8jaE6T9CeEqQ/view",
+    "IMG11CERT-ELF-VANE-JUL-2026-ULT-OPORTFEED": "https://drive.google.com/file/d/1cdsxxmhFQi0229almcl6sozM7EFyln6J/view",
+    "IMG12CERT-ELF-VANE-JUL-2026-ULT-OPORTFEED": "https://drive.google.com/file/d/11551J0ui1MX3GQlhTgG21wOjmxy4J3e2/view",
+    "IMG13CERT-ELF-VANE-JUL-2026-ULT-OPORTFEED": "https://drive.google.com/file/d/1Giv0vBWYqv5BJ7ZdxOblkEQ8U2xbAG_C/view",
+    "IMG14CERT-ELF-VANE-JUL-2026-ULT-OPORTFEED": "https://drive.google.com/file/d/1d265gvzaD9U0oQUQVCDk8QGPTkWsXZ9b/view",
+    "VD1CERT-ELF-ANA-JUL-2026FEED": "https://drive.google.com/file/d/1igujy9Gz_5DNJkB4mnXd5mikbarsyUgT/view",
+    "VD2CERT-ELF-ANA-JUL-2026FEED": "https://drive.google.com/file/d/1cM2afcZeXz3V_gdv0qP9Oc474TYXJXQf/view",
+    "VD3CERT-ELF-ANA-JUL-2026FEED": "https://drive.google.com/file/d/1ejwo3YBaqvsEPFV9wfY58mM_p1gf6rlY/view",
+    "VD4CERT-ELF-ANA-JUL-2026FEED": "https://drive.google.com/file/d/1gtcVwHpKfgcqS8Uo6QMU3FLN-0GXlVME/view",
+    "VD5CERT-ELF-ANA-JUL-2026FEED": "https://drive.google.com/file/d/1N5nIsnYkRq-ydD1nGcfKFp8_8SGX0YQC/view",
+    "VD6CERT-ELF-ANA-JUL-2026FEED": "https://drive.google.com/file/d/1j34EDfbQfbMUWTzvG13A18OzSTw3g-95/view",
+    "VD7CERT-ELF-ANA-JUL-2026FEED": "https://drive.google.com/file/d/1wtztu6OcKsu5sPhA133qXLTmxBMnf80Z/view",
+    "VD8CERT-ELF-ANA-JUL-2026FEED": "https://drive.google.com/file/d/1VLVLjl99v2Epi-_hhIkheSu42BEAvkUV/view",
+    "VD9CERT-ELF-ANA-JUL-2026FEED": "https://drive.google.com/file/d/1EHdjZrAtbdtrCASizW-rJ2C2_XuYG-NZ/view",
+    "VD10CERT-ELF-ANA-JUL-2026FEED": "https://drive.google.com/file/d/1MGeK0Hpvud_f9RWn6QMk9MU7-DhUWpjn/view",
+}
+
+
 def to_num(s):
     """Converte série para numérico — detecta formato BR (1.234,56) ou US (1234.56)"""
     if pd.api.types.is_numeric_dtype(s):
@@ -729,22 +785,26 @@ def load_upsells():
 
 # ══ CRIATIVOS × LINKS (aba opcional) ═════════════════════
 def load_criativos_links():
-    """Aba 'Criativos_x_Links': coluna A = nome do criativo (igual ao nome do anúncio no Meta),
-    coluna B = link (Drive etc.). Sem essa aba, os links simplesmente não aparecem."""
+    """Links dos criativos: começa pelos FIXOS embutidos no py; a aba
+    'Criativos_x_Links' (colA nome, colB link), se existir, complementa/sobrepõe."""
+    links = { str(k).strip().lower(): str(v).strip()
+              for k, v in (CRIATIVOS_LINKS_FIXOS or {}).items()
+              if str(v).strip().lower().startswith("http") }
+    n_fixos = len(links)
+    n_aba = 0
     try:
         df = pd.read_csv(URL_CRIAT, header=None, dtype=str)
+        for _, r in df.iterrows():
+            nome = str(r[0]).strip() if pd.notna(r[0]) else ""
+            url  = str(r[1]).strip() if len(r) > 1 and pd.notna(r[1]) else ""
+            if not nome or not url.lower().startswith("http"): continue
+            links[nome.lower()] = url; n_aba += 1
+        if n_aba == 0:
+            print("  Criativos×Links: aba lida mas SEM links válidos (coluna B precisa ser URL em texto puro)")
     except Exception:
-        print("  Criativos×Links: aba não encontrada (links desligados)")
-        return None
-    links = {}
-    for _, r in df.iterrows():
-        nome = str(r[0]).strip() if pd.notna(r[0]) else ""
-        url  = str(r[1]).strip() if len(r) > 1 and pd.notna(r[1]) else ""
-        if not nome or not url.lower().startswith("http"): continue   # pula cabeçalho/vazias
-        links[nome.lower()] = url
-    print(f"  Criativos×Links: {len(links)} links")
+        print("  Criativos×Links: aba indisponível — usando só os fixos do py")
+    print(f"  Criativos×Links: {n_fixos} fixos no py + {n_aba} da aba = {len(links)} no total")
     return links or None
-
 # ══ REGIÃO (spend por país) ═══════════════════════════
 def load_regiao():
     """Lê breakdown-regiao (país 2L) e exporta raw diário {d, ps, lct, sp, pur}."""
