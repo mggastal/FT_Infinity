@@ -367,6 +367,11 @@ td.g-utm,th.g-utm{background:rgba(217,119,6,.06);}
           <div class="cc-t">Vendas por Produto</div>
           <div id="tProdutos3" style="overflow-x:auto"></div>
         </div>
+        <div class="cc" id="cardQFCap" style="display:none">
+          <div class="cc-t">Quente × Frio</div>
+          <div class="cc-s">com base nos leads identificados via UTM (campanha Hot/Cold)</div>
+          <div style="height:230px;position:relative"><canvas id="ch_qf_cap"></canvas></div>
+        </div>
         <div class="cc" id="cardProduto">
           <div class="cc-t" id="ccProdutoTitle">Vendas por Produto</div>
           <div class="cc-s" id="ccProdutoSub">por origem</div>
@@ -458,6 +463,11 @@ td.g-utm,th.g-utm{background:rgba(217,119,6,.06);}
           <div class="cc-s">código da oferta de captação do comprador</div>
           <div id="tCertCodigos" style="overflow-x:auto"></div>
         </div>
+      </div>
+      <div class="cc" id="cardQFCert" style="display:none;margin-bottom:14px">
+        <div class="cc-t">Quente × Frio</div>
+        <div class="cc-s">com base nos leads identificados via UTM (campanha Hot/Cold)</div>
+        <div style="height:230px;position:relative"><canvas id="ch_qf_cert"></canvas></div>
       </div>
       <div class="cc" style="margin-bottom:14px">
         <div class="cc-t">Origem Detalhada (SCK da captura)</div>
@@ -568,6 +578,7 @@ const CERT_RAW      = null;
 const UPSELLS_INFO  = null;
 const UPSELLS_RAW   = null;
 const PRODUTO_CAPTACAO = null;
+const CRIAT_LINKS   = null;
 const PESQUISA     = null;
 const TICKET_MEDIO     = null;
 
@@ -598,7 +609,14 @@ function updatePagoToggleVis(p){
   const ok=(typeof USAR_ORIGEM!=='undefined'&&USAR_ORIGEM)&&p==='overview';
   el.style.display=ok?'':'none';
 }
-let LANG=(function(){try{return localStorage.getItem('dashLang')||LANG_DEFAULT;}catch(e){return LANG_DEFAULT;}})();
+const LS_LANG='dashLang_'+((typeof LANCAMENTO_COD!=='undefined'&&LANCAMENTO_COD)?LANCAMENTO_COD:'geral');
+let LANG=(function(){
+  // sem seletor de idioma neste dashboard → SEMPRE o idioma do cliente (ignora valor salvo,
+  // inclusive o de OUTRO dashboard no mesmo domínio — a chave antiga 'dashLang' era compartilhada)
+  const tem=(typeof USAR_IDIOMAS!=='undefined'&&USAR_IDIOMAS);
+  if(!tem) return LANG_DEFAULT;
+  try{return localStorage.getItem(LS_LANG)||LANG_DEFAULT;}catch(e){return LANG_DEFAULT;}
+})();
 const I18N={
   // Menu / topbar
   'Métricas Diárias':'Métricas Diarias','Pesquisa':'Encuesta','Lançamento':'Lanzamiento',
@@ -651,6 +669,8 @@ const I18N={
   'Vendas Diárias':'Ventas Diarias','Faturamento Diário':'Facturación Diaria','Origem':'Origen',
   'Taxa de Conversão':'Tasa de Conversión','captados':'captados',
   'Vendas por Origem':'Ventas por Origen','Vendas por Código × Origem':'Ventas por Código × Origen',
+  'Quente × Frio':'Caliente × Frío','Quente':'Caliente','Frio':'Frío','Não identificado':'No identificado',
+  'com base nos leads identificados via UTM (campanha Hot/Cold)':'basado en los leads identificados vía UTM (campaña Hot/Cold)',
   'Criativos — Performance (utm_content)':'Creativos — Performance (utm_content)',
   'Conjuntos — Performance (utm_medium)':'Conjuntos — Performance (utm_medium)',
   'Campanhas — Performance (utm_term)':'Campañas — Performance (utm_term)',
@@ -736,7 +756,7 @@ function translateAll(){
 }
 function toggleLang(){
   LANG=LANG==='es'?'pt':'es';
-  try{localStorage.setItem('dashLang',LANG);}catch(e){}
+  try{localStorage.setItem(LS_LANG,LANG);}catch(e){}
   // Recarregar renders (gráficos canvas pegam labels traduzidos via t())
   try{if(typeof renderOverview==='function')renderOverview();}catch(e){}
   try{if(typeof renderMeta==='function')renderMeta();}catch(e){}
@@ -1036,6 +1056,79 @@ function hotRawFiltered(){
 }
 const normUtm=s=>(s||'').toString().trim().toLowerCase();
 function hasUtmData(){return !!(HOT_RAW&&HOT_RAW.some&&HOT_RAW.some(r=>r.ut||r.um||r.uco));}
+function tornaOrdenavel(id){
+  const tb=document.querySelector('#'+id+' table'); if(!tb||!tb.tBodies[0]) return;
+  const ths=[...tb.querySelectorAll('thead th')];
+  const parseCel=t=>{
+    t=(t||'').trim();
+    if(!t||t==='—') return null;
+    t=t.replace(/[^\d.,\-]/g,'');           // tira $, %, x, espaços, (…)
+    if(!t) return null;
+    if(t.includes(',')) return parseFloat(t.replace(/\./g,'').replace(',','.'));   // pt-BR
+    if(/^\d{1,3}(\.\d{3})+$/.test(t)) return parseFloat(t.replace(/\./g,''));    // milhar sem decimal
+    return parseFloat(t);                                                           // 6.83 / 59.9
+  };
+  ths.forEach((th,ci)=>{
+    th.style.cursor='pointer';
+    const arr=document.createElement('span');
+    arr.className='sort-arr'; arr.style.cssText='margin-left:3px;font-size:7px;opacity:.75';
+    th.appendChild(arr);
+    th.addEventListener('click',()=>{
+      const dir=th.dataset.dir==='desc'?'asc':'desc';
+      ths.forEach(o=>{o.dataset.dir='';const a=o.querySelector('.sort-arr');if(a)a.textContent='';});
+      th.dataset.dir=dir; arr.textContent=dir==='desc'?'▼':'▲';
+      const body=tb.tBodies[0];
+      const linhas=[...body.rows];
+      const chave=tr=>{
+        const cel=tr.cells[ci]; if(!cel) return null;
+        return ci===0?cel.textContent.trim().toLowerCase():parseCel(cel.textContent);
+      };
+      linhas.sort((a,b)=>{
+        const va=chave(a), vb=chave(b);
+        if(va==null&&vb==null) return 0;
+        if(va==null) return 1; if(vb==null) return -1;   // nulos sempre por último
+        if(ci===0) return dir==='desc'?String(vb).localeCompare(String(va)):String(va).localeCompare(String(vb));
+        return dir==='desc'?vb-va:va-vb;
+      });
+      linhas.forEach(tr=>body.appendChild(tr));
+    });
+  });
+}
+function pieBrutoPct(v,ctx){const tot=ctx.dataset.data.reduce((a,b)=>a+b,0);return tot?fN(v)+' · '+r2(v/tot*100).toFixed(1)+'%':fN(v);}
+function tempTokens(s){
+  const tk=String(s||'').toUpperCase().split(/[^A-Z0-9]+/);
+  if(tk.includes('COLD')) return 'Frio';
+  if(tk.includes('HOT'))  return 'Quente';   // 'HOTMART' não vira token 'HOT'
+  return '';
+}
+function tempDe(r,S){
+  // 1º: campanha resolvida (aceita truncada); depois campos brutos em cascata
+  const rc=resolveIn(normUtm(r.ut||''), S.camp);
+  if(rc){const x=tempTokens(S.camp.get(rc)); if(x) return x;}
+  for(const f of ['ut','uc','um','uco']){
+    const x=tempTokens(r[f]); if(x) return x;
+  }
+  return 'Não identificado';
+}
+function renderPieQF(chartId, canvasId, cardId, rows, S){
+  const card=document.getElementById(cardId); if(!card) return;
+  const cnt={'Quente':0,'Frio':0,'Não identificado':0};
+  rows.forEach(r=>{cnt[tempDe(r,S)]++;});
+  if(cnt['Quente']+cnt['Frio']===0){card.style.display='none';return;}
+  card.style.display='';
+  const CORES={'Quente':'#f97316','Frio':'#3b82f6'};
+  const lbls=['Quente','Frio'].filter(k=>cnt[k]>0);   // só leads identificados via UTM
+  if(CH[chartId]){try{CH[chartId].destroy();}catch(e){}}
+  const cv=document.getElementById(canvasId); if(!cv) return;
+  CH[chartId]=new Chart(cv,{type:'pie',
+    data:{labels:lbls.map(k=>t(k)),datasets:[{data:lbls.map(k=>cnt[k]),backgroundColor:lbls.map(k=>CORES[k]),borderWidth:1}]},
+    options:{responsive:true,maintainAspectRatio:false,
+      plugins:{legend:{position:'bottom',labels:{font:{size:9},boxWidth:10,padding:8}},
+        datalabels:{display:ctx=>showLabels&&ctx.dataset.data[ctx.dataIndex]>0,color:'#fff',
+          font:{size:labelSize+1,weight:'bold'},
+          formatter:(v,ctx)=>{const tot=ctx.dataset.data.reduce((a,b)=>a+b,0);return tot?r2(v/tot*100).toFixed(1)+'%':'';}},
+        tooltip:{callbacks:{label:c=>' '+c.label+': '+fN(c.parsed)}}}}});
+}
 function metaNameSets(){
   // nomes canônicos (norm→original) de campanha/conjunto/anúncio, p/ resolver UTMs truncadas pelo SCK
   const camp=new Map(), adset=new Map(), ad=new Map();
@@ -1359,6 +1452,7 @@ function renderOverview(){
 
     // ── Painel Vendas por País (vendas Hotmart × invest Meta) ──
     renderProdutos3();
+    renderPieQF('qf_cap','ch_qf_cap','cardQFCap',hotRawFiltered(),metaNameSets());
     renderPaisPanel();
     renderLadosPanel();
 
@@ -1596,6 +1690,7 @@ function renderCert(){
         <td class="num" style="${mono};font-weight:700">${fN(tots.tot)}</td>
         <td class="num" style="${mono};color:#059669;font-weight:700">${fR(r2(tots.tot*V))}</td>
       </tr></tfoot></table>`;
+    tornaOrdenavel('tCertCodigos');
   })();
   // ── Pizza: Destino (Vanessa × Ana) ──
   (function(){
@@ -1616,6 +1711,7 @@ function renderCert(){
             font:{size:labelSize+1,weight:'bold'},formatter:pieLbl},
           tooltip:{callbacks:{label:c=>' '+c.label+': '+pieLbl(c.parsed,{dataset:{data:c.dataset.data}})}}}}});
   })();
+  renderPieQF('qf_cert','ch_qf_cert','cardQFCert',rows,metaNameSets());
   // ── Performance por UTM de tráfego: Invest × Fat.Captação × Fat.Cert × ROAS ──
   (function(){
     const S=metaNameSets();
@@ -1663,14 +1759,17 @@ function renderCert(){
           <th style="font-size:8px;text-transform:uppercase;letter-spacing:.6px;color:var(--muted);font-weight:700;padding:5px 9px;text-align:left">${nv.lbl}</th>
           ${th('Invest.')}${th('Fat. Captação','#0ea5e9')}${th('Fat. Certificación','#f97316')}${th('Fat. Total','#059669')}${th('ROAS')}
         </tr></thead><tbody>
-        ${lista.map(b=>`<tr>
-          <td style="font-size:10px;padding:4px 9px;border-bottom:1px solid var(--border);max-width:290px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-weight:600" title="${b.nome}">${b.nome}</td>
+        ${lista.map(b=>{
+          const lk=(nv.el==='tCertCriativos'&&CRIAT_LINKS)?CRIAT_LINKS[String(b.nome).toLowerCase().trim()]:null;
+          const nomeHtml=lk?`<a href="${lk}" target="_blank" rel="noopener" style="color:#2563eb;text-decoration:underline">${b.nome}</a>`:b.nome;
+          return `<tr>
+          <td style="font-size:10px;padding:4px 9px;border-bottom:1px solid var(--border);max-width:290px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-weight:600" title="${b.nome}">${nomeHtml}</td>
           <td style="${mono}">${b.inv!=null?fR(b.inv):'—'}</td>
           <td style="${mono};color:#0ea5e9">${fR(b.capV)} <span style="color:var(--muted2);font-size:9px">(${fN(b.capN)})</span></td>
           <td style="${mono};color:#f97316">${b.ceV?fR(b.ceV):'—'} <span style="color:var(--muted2);font-size:9px">(${fN(b.ceN)})</span></td>
           <td style="${mono};color:#059669;font-weight:700">${fR(b.tot)}</td>
           <td class="${roasCls(b.roas)}" style="${mono}">${fx2(b.roas)}</td>
-        </tr>`).join('')}</tbody>
+        </tr>`;}).join('')}</tbody>
         <tfoot><tr style="background:var(--surface2);font-weight:700;border-top:2px solid var(--border)">
           <td style="font-size:9px;padding:6px 9px;font-weight:700;color:var(--muted2);text-transform:uppercase">Total</td>
           <td class="num" style="${mono}">${fR(T.inv)}</td>
@@ -1681,6 +1780,7 @@ function renderCert(){
         </tr>
         <tr><td colspan="6" style="padding:4px 9px;font-size:9px;color:var(--muted2)">somente UTMs com nomenclatura de tráfego (casadas com os nomes do Meta, inclusive truncadas) · ROAS = (Fat. Captação + Fat. Certificación) ÷ Invest.</td></tr></tfoot>
       </table>`;
+      tornaOrdenavel(nv.el);
     });
   })();
   // ── Tabelas SCK detalhadas (base da aba) ──
@@ -1751,6 +1851,7 @@ function renderCert(){
       <td style="${mono};color:#059669">${fR(b.fat)}</td>
       <td style="${mono}">${b.cpa!=null?fR(b.cpa):'—'}</td>
       <td class="${roasCls(b.roas)}" style="${mono}">${fx(b.roas)}</td></tr>`;}).join('')}</tbody></table>`;
+  tornaOrdenavel('tCertPais');
   // Destino (via jornada)
   let spV=LADOS?LADOS.map(()=>0):[]; 
   if(Array.isArray(LADOS)&&Array.isArray(META_RAW_CAMP)) META_RAW_CAMP.forEach(r=>{
@@ -1772,6 +1873,7 @@ function renderCert(){
       <td style="${mono}">${b.cpa!=null?fR(b.cpa):'—'}</td>
       <td class="${roasCls(b.roas)}" style="${mono}">${fx(b.roas)}</td></tr>`).join('')}</tbody>
     <tfoot><tr><td colspan="6" style="padding:4px 9px;font-size:9px;color:var(--muted2)">Destino herdado da compra do ingresso (Acceso VIP) pelo e-mail do comprador · cruzamento feito na geração — e-mails não aparecem no dashboard · cobertura: ${CERT.cobertura||0}% das vendas com jornada identificada</td></tr></tfoot></table>`;
+  tornaOrdenavel('tCertLados');
   // Ofertas
   const mapO={};
   rows.forEach(r=>{const k=r.of||'(sem código)';(mapO[k]=mapO[k]||{of:k,q:0}).q++;});
@@ -1783,6 +1885,7 @@ function renderCert(){
     ${orows.map(b=>`<tr><td style="font-size:10px;padding:5px 9px;border-bottom:1px solid var(--border);font-family:monospace">${b.of}</td>
       <td style="${mono};font-weight:700">${fN(b.q)}</td>
       <td style="${mono};color:#059669">${fR(r2(b.q*V))}</td></tr>`).join('')}</tbody></table>`;
+  tornaOrdenavel('tCertOfertas');
 }
 
 const PAIS_NOME={CO:'Colombia',MX:'México',US:'Estados Unidos',PE:'Perú',EC:'Ecuador',CL:'Chile',AR:'Argentina',
