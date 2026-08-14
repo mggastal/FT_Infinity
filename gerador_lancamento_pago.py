@@ -84,6 +84,7 @@ URL_GA   = sheet_url("breakdown-gender-age")
 URL_PT   = sheet_url("breakdown-platform")
 URL_RG   = sheet_url("breakdown-regiao")
 URL_CERT = sheet_url("hotmart-CertificacionELF")
+URL_CRIAT= sheet_url("Criativos_x_Links")   # aba opcional: colA = nome do criativo, colB = link
 
 def to_num(s):
     """Converte série para numérico — detecta formato BR (1.234,56) ou US (1234.56)"""
@@ -726,6 +727,24 @@ def load_upsells():
         print(f"  Upsell {u['nome']}: {len(rp)} | Pago {sum(1 for r in rp if r['org']=='Pago')} · Orgânico {sum(1 for r in rp if r['org']=='Orgânico')}")
     return info, rows
 
+# ══ CRIATIVOS × LINKS (aba opcional) ═════════════════════
+def load_criativos_links():
+    """Aba 'Criativos_x_Links': coluna A = nome do criativo (igual ao nome do anúncio no Meta),
+    coluna B = link (Drive etc.). Sem essa aba, os links simplesmente não aparecem."""
+    try:
+        df = pd.read_csv(URL_CRIAT, header=None, dtype=str)
+    except Exception:
+        print("  Criativos×Links: aba não encontrada (links desligados)")
+        return None
+    links = {}
+    for _, r in df.iterrows():
+        nome = str(r[0]).strip() if pd.notna(r[0]) else ""
+        url  = str(r[1]).strip() if len(r) > 1 and pd.notna(r[1]) else ""
+        if not nome or not url.lower().startswith("http"): continue   # pula cabeçalho/vazias
+        links[nome.lower()] = url
+    print(f"  Criativos×Links: {len(links)} links")
+    return links or None
+
 # ══ REGIÃO (spend por país) ═══════════════════════════
 def load_regiao():
     """Lê breakdown-regiao (país 2L) e exporta raw diário {d, ps, lct, sp, pur}."""
@@ -803,7 +822,7 @@ def replace_js_const(html, name, value):
     if not found[0]: print(f"  AVISO: não encontrou const {name}")
     return new_html
 
-def inject_all(tpl, meta_k, meta_d, meta_dc, meta_raw_c, meta_t, meta_bd, hot_k, hot_d, hot_raw, regiao_raw, cert_info, cert_raw, ups_info, ups_raw, pes, ticket):
+def inject_all(tpl, meta_k, meta_d, meta_dc, meta_raw_c, meta_t, meta_bd, hot_k, hot_d, hot_raw, regiao_raw, cert_info, cert_raw, ups_info, ups_raw, criat_links, pes, ticket):
     html=Path(tpl).read_text(encoding="utf-8")
     html=replace_js_const(html,"META_KPIS",    meta_k)
     html=replace_js_const(html,"META_DAILY",       meta_d)
@@ -820,6 +839,7 @@ def inject_all(tpl, meta_k, meta_d, meta_dc, meta_raw_c, meta_t, meta_bd, hot_k,
     html=replace_js_const(html,"CERT_RAW",     cert_raw)
     html=replace_js_const(html,"UPSELLS_INFO", ups_info if ups_info else None)
     html=replace_js_const(html,"PRODUTO_CAPTACAO", PRODUTOS_HOTMART[0] if PRODUTOS_HOTMART and PRODUTOS_HOTMART!=["ALL"] else None)
+    html=replace_js_const(html,"CRIAT_LINKS",  criat_links)
     html=replace_js_const(html,"UPSELLS_RAW",  ups_raw)
     html=replace_js_const(html,"PESQUISA", pes if USAR_PESQUISA else False)
     html=replace_js_const(html,"TICKET_MEDIO", ticket)
@@ -886,7 +906,8 @@ def main():
     regiao_raw=load_regiao()
     cert_info,cert_raw=load_cert()
     ups_info,ups_raw=load_upsells()
-    html=inject_all(TEMPLATE_FILE,m_k,m_d,m_dc,m_raw,m_t,m_bd,hot_k,hot_d,h_raw,regiao_raw,cert_info,cert_raw,ups_info,ups_raw,pes,ticket)
+    criat_links=load_criativos_links()
+    html=inject_all(TEMPLATE_FILE,m_k,m_d,m_dc,m_raw,m_t,m_bd,hot_k,hot_d,h_raw,regiao_raw,cert_info,cert_raw,ups_info,ups_raw,criat_links,pes,ticket)
     Path(OUTPUT_FILE).write_text(html,encoding="utf-8")
     print(f"  ✓ {OUTPUT_FILE} ({len(html)//1024}KB)")
 
