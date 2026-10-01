@@ -37,7 +37,7 @@ USAR_IDIOMAS     = True            # True = botão PT/ES na topbar traduz o rela
 IDIOMA_PADRAO    = "es"            # idioma inicial do relatório: "es" ou "pt"
 # Vendas extras (fora do relatório) — injetadas manualmente. Cada uma conta VALOR_FIXO.
 # Formato: {"data":"dd/mm/aaaa","qtd":N}. [] = nenhuma.
-VENDAS_EXTRAS    = [{"data":"12/07/2026","qtd":33}]
+VENDAS_EXTRAS    = [{"data":"12/07/2026","qtd":0}]
 EXTRAS_LABEL     = "Fora do relatório"   # rótulo no card Vendas por SCK
 EXTRAS_ORIGEM    = "Orgânico"            # Pago | Orgânico (entra no gráfico de origem)
 # Produto PRINCIPAL do lançamento (alto ticket) — página própria com atribuição por jornada.
