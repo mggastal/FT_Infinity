@@ -14,7 +14,7 @@ OUTPUT_FILE      = "index.html"
 NOME_CLIENTE     = "Longevidad Feminina"
 LOGO_LETRA       = "LF"
 COR_ACENTO       = "#252F26"
-LANCAMENTO_COD   = "CERT-ELF"      # filtra campanhas pelo código; "" = ver tudo
+LANCAMENTO_COD   = "CERT-ELF-OUT-2026"      # filtra campanhas pelo código; "" = ver tudo
 USAR_PESQUISA    = True            # False = oculta aba Pesquisa no menu e dashboard
 USAR_ORIGEM      = True            # pizza Pago vs Orgânico (classificação por código de oferta)
 FUNIL_TITULO     = "Análise do Funil Pago (Meta Ads)"
