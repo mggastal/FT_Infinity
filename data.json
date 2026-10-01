@@ -2,12 +2,12 @@
   "cliente": "Longevidad Feminina",
   "cor": "#252F26",
   "letra": "LF",
-  "lancamento": "CERT-ELF",
+  "lancamento": "CERT-ELF-OUT-2026",
   "atualizado": "01/10/2026",
   "kpis": {
-    "spend": 10367.56,
+    "spend": 371.67,
     "vendas": 751,
     "faturamento": 7510.0,
-    "cpa": 39.12
+    "cpa": 92.92
   }
 }
