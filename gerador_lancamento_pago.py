@@ -21,10 +21,12 @@ FUNIL_TITULO     = "Análise do Funil Pago (Meta Ads)"
 FUNIL_COMPRAS_PAGO = True          # True = etapa "Compras" do funil usa vendas com SCK pago (não o pixel do Meta)
 USAR_LOGO        = False           # False = não usa logo.png (sidebar mostra só a letra; sem favicon)
 USAR_RODAPE      = False           # False = oculta o rodapé "Desenvolvido por Sobé Estratégias"
-PRODUTOS_HOTMART = ["Acceso VIP: Taller El Negocio de la Longevidad Femenina"]  # SÓ este produto; "ALL"/[] = todos
+PRODUTOS_HOTMART = ["Acceso VIP: Taller El Negocio de la Longevidad Femenina",
+                    "Taller: El Negocio de la Longevidad |LNC|"]   # produtos de captação (ID 8549361 = LNC); "ALL"/[] = todos
 # ── Classificação Pago vs Orgânico: pelo CÓDIGO DA OFERTA (fonte da verdade) ──
 # Vendas nessas ofertas = tráfego pago; todo o resto = orgânico (resolve UTMs vazias do pago)
-OFERTAS_PAGO     = ["kdpeaqhn","zzoec1tg","804s6rul","4kvrtrqw","txloa2x3","mw36twfc","fcpjeeik"]
+OFERTAS_PAGO     = ["kdpeaqhn","zzoec1tg","804s6rul","4kvrtrqw","txloa2x3","mw36twfc","fcpjeeik",
+                    "kdiysy7a","0iuafr2b"]   # LNC: 10USD Pauta A / Pauta C (r3iqrsiw = Orgánico A → fica orgânico)
 # (SCK ainda é lido para as tabelas de UTM, mas NÃO define mais a origem)
 SCK_SRC_PAGO     = ["fb","facebook","ig","instagram"]
 # Valor por venda: como a Hotmart traz moedas misturadas, cada venda conta um valor FIXO.
@@ -46,8 +48,9 @@ EXTRAS_ORIGEM    = "Orgânico"            # Pago | Orgânico (entra no gráfico 
 PRODUTO_CERT = {"nome":"Longeva - Certificación ELF","apelido":"Ventas Certificación","valor":799}
 CERT_INICIO  = "05/08/2026"   # vendas ANTES desta data são teste — ignoradas
 # Upsells do lançamento — identificados pelo CÓDIGO DE OFERTA (o produto pode vender por outras ofertas fora do lançamento)
-UPSELLS = [{"oferta":"mw36twfc","nome":"Recetario Zonas Azules","valor":19},
-           {"oferta":"fcpjeeik","nome":"Diagnóstico de Posicionamiento","valor":9}]
+# "oferta" aceita um código ou uma lista (ex: oferta de upsell + oferta de order bump do mesmo produto)
+UPSELLS = [{"oferta":["mw36twfc","fknjhnbl"],"nome":"Recetario Zonas Azules","valor":19},          # fknjhnbl = bump LNC (ID 8647854)
+           {"oferta":["fcpjeeik","eg15xjgf"],"nome":"Diagnóstico de Posicionamiento","valor":9}]   # eg15xjgf = bump LNC (ID 8647807)
 
 # Comparativo de especialistas/lados — casa tokens no nome da campanha (invest) e nos UTMs (vendas).
 # Ordem importa: o primeiro lado que casar vence. [] = painel oculto.
@@ -769,8 +772,9 @@ def load_upsells():
     jorn=_jornada_acceso()
     info=[]; rows=[]
     for u in UPSELLS:
-        d=df[(df["of2"]==u["oferta"].lower())].dropna(subset=["date"])
-        info.append({"nome":u["nome"],"valor":float(u["valor"]),"oferta":u["oferta"]})
+        ofs=[u["oferta"]] if isinstance(u["oferta"],str) else list(u["oferta"])
+        d=df[df["of2"].isin([o.strip().lower() for o in ofs])].dropna(subset=["date"])
+        info.append({"nome":u["nome"],"valor":float(u["valor"]),"oferta":", ".join(ofs)})
         for _,r in d.iterrows():
             org,_,_ = _class_sck(r["_sck2"])          # 1º: SCK da própria venda
             if not org:
