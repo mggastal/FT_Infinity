@@ -72,8 +72,8 @@ TX_IC_BOM        = 15.0   # Tx Init Checkout ≥ 15% → verde | 12-15% → amar
 TX_IC_MEDIO      = 12.0
 TX_CK_BOM        = 25.0   # Taxa Checkout ≥ 25% → verde | 20-25% → amarelo | <20% → vermelho
 TX_CK_MEDIO      = 20.0
-TX_CONV_BOM      = 7.0    # Taxa Conversão LP ≥ 7% → verde | 5-7% → amarelo | <5% → vermelho
-TX_CONV_MEDIO    = 5.0
+TX_CONV_BOM      = 5.0    # Taxa Conversão LP ≥ 7% → verde | 5-7% → amarelo | <5% → vermelho
+TX_CONV_MEDIO    = 4.0
 
 CPM_BOM          = 40.0    # CPM ≤ 7 → verde | 7-12 → amarelo | >12 → vermelho (menor = melhor)
 CPM_MEDIO        = 60.0
