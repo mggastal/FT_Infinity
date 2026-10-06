@@ -236,6 +236,27 @@ td.g-utm,th.g-utm{background:rgba(217,119,6,.06);}
 .pl-lbl{flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;color:var(--muted);}
 .pl-pct{font-family:'DM Mono',monospace;font-weight:700;font-size:10px;}
 
+/* PESQUISA COMPARATIVO */
+.pzc-nota{font-size:11px;color:var(--muted);margin:0 0 12px;}
+.pzc-grid{display:flex;flex-direction:column;gap:12px;margin-bottom:14px;}
+.pzc-card{background:var(--surface);border:1px solid var(--border);border-radius:var(--r);padding:14px;box-shadow:var(--sh);}
+.pzc-row{display:grid;grid-template-columns:repeat(3,1fr);gap:12px;margin:10px 0 12px;}
+.pzc-col{display:flex;flex-direction:column;align-items:center;min-width:0;}
+.pzc-ttl{font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.6px;color:var(--muted);text-align:center;margin-bottom:6px;}
+.pzc-ttl.atual{color:var(--text);}
+.pzc-n{font-family:'DM Mono',monospace;font-weight:500;color:var(--muted2);margin-left:4px;text-transform:none;}
+.pzc-cw{position:relative;width:100%;max-width:190px;height:170px;}
+.pzc-vazio{height:170px;display:flex;align-items:center;justify-content:center;text-align:center;font-size:11px;color:var(--muted2);font-style:italic;padding:0 10px;}
+.pzc-tw{overflow-x:auto;}
+.pzc-tbl{width:100%;border-collapse:collapse;font-size:11px;min-width:420px;}
+.pzc-tbl th{font-size:8px;text-transform:uppercase;letter-spacing:.6px;color:var(--muted);font-weight:700;padding:5px 8px;text-align:right;white-space:nowrap;border-bottom:1px solid var(--border);}
+.pzc-tbl th:first-child,.pzc-tbl td:first-child{text-align:left;}
+.pzc-tbl td{padding:4px 8px;border-bottom:1px solid var(--border);text-align:right;font-family:'DM Mono',monospace;font-size:10px;white-space:nowrap;color:var(--muted);}
+.pzc-tbl td:first-child{font-family:'DM Sans',sans-serif;font-size:11px;color:var(--text);white-space:normal;min-width:170px;}
+.pzc-tbl td.atual{color:var(--text);font-weight:700;}
+.pzc-dot{display:inline-block;width:8px;height:8px;border-radius:50%;margin-right:6px;vertical-align:middle;}
+@media(max-width:560px){.pzc-row{grid-template-columns:1fr;}}
+
 /* PESQUISA FILTROS */
 .pes-kpis{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-bottom:14px;}
 .filter-box{background:var(--surface);border:1px solid var(--border);border-radius:var(--r);padding:14px;margin-bottom:14px;box-shadow:var(--sh);}
@@ -643,6 +664,11 @@ let LANG=(function(){
   try{return localStorage.getItem(LS_LANG)||LANG_DEFAULT;}catch(e){return LANG_DEFAULT;}
 })();
 const I18N={
+  // Pesquisa · comparativo
+  'Lançamento atual':'Lanzamiento actual','Captação ago/26':'Captación ago/26','Alunos ago/26':'Alumnas ago/26',
+  'Resposta':'Respuesta','Pergunta não existe nesta pesquisa':'La pregunta no existe en esta encuesta',
+  'Δ atual vs alunos':'Δ actual vs alumnas',
+  'Comparativo com pesquisas anteriores · as anteriores são fixas — o filtro de origem altera só':'Comparativo con encuestas anteriores · las anteriores son fijas — el filtro de origen cambia solo',
   // Menu / topbar
   'Métricas Diárias':'Métricas Diarias','Pesquisa':'Encuesta','Lançamento':'Lanzamiento',
   'Ontem':'Ayer','Tudo':'Todo','Rótulos':'Etiquetas','Escuro':'Oscuro','Claro':'Claro',
@@ -3378,6 +3404,7 @@ function buildPizzas(){
     rows=rows.filter(r=>vals.has(pesVal(r,utm)));
   });
   document.getElementById('pesCount').textContent=`${rows.length} respondentes selecionados`;
+  if(PESQUISA.comp&&PESQUISA.comp.q&&Object.keys(PESQUISA.comp.q).length){ buildPesqComparativo(rows); return; }
   const grid=document.getElementById('pizzaGrid');
   grid.innerHTML=PESQUISA.perguntas.map((p,i)=>`
     <div class="pz-card">
@@ -3407,6 +3434,65 @@ function buildPizzas(){
         <div class="pl-pct">${total>0?(v/total*100).toFixed(1)+'%':v}</div>
       </div>`).join('');
   });
+}
+
+// Comparativo: pesquisa atual (filtrável por origem) × pesquisas anteriores (fixas), pergunta a pergunta
+const PZC_CORES={light:['#2a78d6','#eb6834','#1baf7a','#eda100','#e87ba4','#008300','#4a3aa7','#e34948'],
+                 dark: ['#3987e5','#d95926','#199e70','#c98500','#d55181','#008300','#9085e9','#e66767']};
+const PZC_OUTROS='#94a3b8';
+function buildPesqComparativo(rows){
+  const C=PESQUISA.comp, grid=document.getElementById('pizzaGrid');
+  const dark=document.documentElement.getAttribute('data-theme')==='dark';
+  const pal=dark?PZC_CORES.dark:PZC_CORES.light;
+  const surf=getComputedStyle(document.documentElement).getPropertyValue('--surface').trim()||(dark?'#1a1a19':'#fff');
+  const cor=(q,i)=>i===q.otros?PZC_OUTROS:pal[i%pal.length];
+  const rot=C.rotulos||[];
+  const perg=PESQUISA.perguntas.filter(p=>C.q[p]);
+  // contagens por pergunta: [atual(filtrada), ...anteriores(fixas)]
+  const dados=perg.map(p=>{
+    const q=C.q[p]; const at=new Array(q.cats.length).fill(0);
+    rows.forEach(r=>{const v=r[p]; if(v==null||v==='null'||v==='undefined') return;
+      const i=q.mp[v]!==undefined?q.mp[v]:q.otros; if(i>=0) at[i]++;});
+    return {p,q,series:[at,...q.src]};
+  });
+  const pct=(v,t)=>t>0?(v/t*100):null;
+  const fp=x=>x==null?'—':x.toFixed(1)+'%';
+  grid.className='pzc-grid';
+  grid.innerHTML=`<div class="pzc-nota"><span>${t('Comparativo com pesquisas anteriores · as anteriores são fixas — o filtro de origem altera só')}</span> <b>${t(rot[0]||'')}</b></div>`+
+  dados.map((d,qi)=>{
+    const tots=d.series.map(s=>s?s.reduce((a,b)=>a+b,0):null);
+    const cols=d.series.map((s,si)=>{
+      const ttl=`<div class="pzc-ttl${si===0?' atual':''}">${t(rot[si]||'')}<span class="pzc-n">n=${tots[si]==null?'—':fN(tots[si])}</span></div>`;
+      if(!s) return `<div class="pzc-col">${ttl}<div class="pzc-vazio">${t('Pergunta não existe nesta pesquisa')}</div></div>`;
+      return `<div class="pzc-col">${ttl}<div class="pzc-cw"><canvas id="pzc_${qi}_${si}"></canvas></div></div>`;
+    }).join('');
+    const iAl=d.series.length-1; const temDelta=d.series.length>2&&d.series[iAl];
+    const linhas=d.q.cats.map((c,ci)=>{
+      const ps=d.series.map((s,si)=>s?pct(s[ci],tots[si]):null);
+      const dl=temDelta&&ps[0]!=null&&ps[iAl]!=null?(ps[0]-ps[iAl]):null;
+      return `<tr><td><span class="pzc-dot" style="background:${cor(d.q,ci)}"></span>${c}</td>`+
+        ps.map((x,si)=>`<td class="${si===0?'atual':''}">${d.series[si]?fp(x):'—'}</td>`).join('')+
+        (temDelta?`<td>${dl==null?'—':(dl>0?'+':'')+dl.toFixed(1)+' pp'}</td>`:'')+`</tr>`;
+    }).join('');
+    return `<div class="pzc-card"><div class="pz-q">${d.p}</div><div class="pzc-row">${cols}</div>
+      <div class="pzc-tw"><table class="pzc-tbl"><thead><tr><th>${t('Resposta')}</th>${rot.map(r=>`<th>${t(r)}</th>`).join('')}${temDelta?`<th>${t('Δ atual vs alunos')}</th>`:''}</tr></thead>
+      <tbody>${linhas}</tbody></table></div></div>`;
+  }).join('');
+  dados.forEach((d,qi)=>d.series.forEach((s,si)=>{
+    if(!s) return; const id=`pzc_${qi}_${si}`, el=document.getElementById(id); if(!el) return;
+    if(PC[id]){PC[id].destroy();delete PC[id];}
+    const tot=s.reduce((a,b)=>a+b,0);
+    if(!tot){el.parentElement.innerHTML=`<div class="pzc-vazio">—</div>`;return;}
+    PC[id]=new Chart(el,{type:'doughnut',
+      data:{labels:d.q.cats,datasets:[{data:s,backgroundColor:d.q.cats.map((_,ci)=>cor(d.q,ci)),borderColor:surf,borderWidth:2}]},
+      options:{responsive:true,maintainAspectRatio:false,cutout:'55%',plugins:{
+        legend:{display:false},
+        tooltip:{callbacks:{label:ctx=>`${ctx.label}: ${fN(ctx.raw)} (${(ctx.raw/tot*100).toFixed(1)}%)`}},
+        datalabels:{display:ctx=>ctx.dataset.data[ctx.dataIndex]/tot>=0.07,color:'#fff',font:{size:9,weight:'bold'},
+          formatter:v=>(v/tot*100).toFixed(0)+'%'}
+      }}});
+  }));
+  if(typeof LANG!=='undefined'&&LANG==='es'&&typeof translateAll==='function') translateAll();
 }
 
 // ═══ CONTROLES ═══

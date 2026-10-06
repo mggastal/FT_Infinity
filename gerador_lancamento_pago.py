@@ -57,6 +57,14 @@ UPSELLS = [{"oferta":["mw36twfc","fknjhnbl"],"nome":"Recetario Zonas Azules","va
 LADOS_COMPARATIVO = [{"nome":"Vanessa","tokens":["VANESSA","VANE"]},
                      {"nome":"Ana","tokens":["ANA"]}]
 
+# Pesquisas de lançamentos anteriores — comparadas lado a lado com a aba "Pesquisa" (atual), pergunta a pergunta.
+# Só as perguntas da pesquisa atual são comparadas (casadas pelo texto). As anteriores são FIXAS (o filtro de
+# origem da página só mexe na pesquisa atual). [] = página Pesquisa no modo antigo (sem comparativo).
+PESQUISA_ATUAL_ROTULO = "Lançamento atual"
+PESQUISAS_COMPARATIVO = [{"aba":"Pesquisa anterior ago26 - captacao","rotulo":"Captação ago/26"},
+                         {"aba":"Pesquisa anterior ago26 - alunos","rotulo":"Alunos ago/26"}]
+PESQ_COMP_MAX_CATS = 7   # respostas além das 7 mais frequentes viram "Otros"
+
 CPA_BOM          = 14
 CPA_MEDIO        = 21
 ROAS_BOM         = 0.69
@@ -854,7 +862,8 @@ def pesquisa_process(df, hot_qtd):
     PERGUNTAS=[c for c in df.columns
                if c not in SKIP_COLS
                and not c.lower().startswith("unnamed")
-               and pd.api.types.is_string_dtype(df[c])  # aceita str e object
+               and (pd.api.types.is_string_dtype(df[c])  # aceita str e object
+                    or (pd.api.types.is_numeric_dtype(df[c]) and 1 < df[c].nunique() <= 11))  # escala curta (ex: 0 a 5)
                and _pergunta_valida(c)]
     graficos=[]
     for p in PERGUNTAS:
@@ -872,6 +881,87 @@ def pesquisa_process(df, hot_qtd):
         for col in UTM_COLS: row[col]=str(r[col]) if col in df.columns and pd.notna(r.get(col)) else None
         rows.append(row)
     return {"total":len(df),"hot_qtd":int(hot_qtd),"graficos":graficos,"filtros":filtros,"rows":rows,"perguntas":PERGUNTAS}
+
+def _pq_norm(s):
+    """Normaliza texto de pergunta/resposta p/ casar entre pesquisas (espaços, acento, caixa, ':' final)."""
+    t = re.sub(r"\s+"," ",str(s)).strip().rstrip(":.").strip()
+    t = re.sub(r"^(\d+)\.0$", r"\1", t)   # 4.0 → 4 (escalas numéricas lidas como float)
+    return _ud.normalize("NFKD",t).encode("ascii","ignore").decode().lower()
+
+def pesquisa_comparativo(df_atual, perguntas):
+    """Agrega as pesquisas anteriores (PESQUISAS_COMPARATIVO) por pergunta da pesquisa atual.
+    Exporta só contagens agregadas (nenhuma resposta individual das pesquisas anteriores vai pro HTML).
+    Categorias: top PESQ_COMP_MAX_CATS pela soma das proporções nas 3 pesquisas; o resto vira 'Otros'."""
+    if not PESQUISAS_COMPARATIVO or df_atual is None or not perguntas: return None
+    qn_atual = {_pq_norm(p): p for p in perguntas}
+    fontes = []
+    for f in PESQUISAS_COMPARATIVO:
+        try:
+            d = pd.read_csv(sheet_url(_up.quote(f["aba"])))
+        except Exception as e:
+            print(f"  ⚠ comparativo '{f['aba']}': não leu ({e})"); continue
+        cols = {_pq_norm(c): c for c in d.columns}
+        casadas = [q for q in qn_atual if q in cols]
+        # gviz devolve a 1ª aba quando o nome não existe → exige perguntas em comum
+        if len(casadas) < 3:
+            print(f"  ⚠ comparativo '{f['aba']}': aba não encontrada ou sem perguntas em comum — ignorada"); continue
+        fontes.append({"rotulo":f["rotulo"],"df":d,"cols":cols})
+        print(f"  Comparativo '{f['rotulo']}': {len(d)} respostas · {len(casadas)}/{len(qn_atual)} perguntas em comum")
+    if not fontes: return None
+
+    def contar(serie):
+        """{chave_norm: qtd} + {chave_norm: {rótulo original: qtd}} para escolher o rótulo mais usado."""
+        cnt, var = {}, {}
+        for v in serie.dropna():
+            sv = str(v)
+            if sv.strip()=="" or sv.strip().lower()=="nan": continue
+            k = _pq_norm(sv)
+            cnt[k] = cnt.get(k,0)+1
+            var.setdefault(k,{}); lab = re.sub(r"\s+"," ",sv).strip()
+            var[k][lab] = var[k].get(lab,0)+1
+        return cnt, var
+
+    q_out = {}
+    for qn, p in qn_atual.items():
+        series = [df_atual[p]] + [(fo["df"][fo["cols"][qn]] if qn in fo["cols"] else None) for fo in fontes]
+        contagens = [contar(s) if s is not None else None for s in series]
+        score, variantes = {}, {}
+        for c in contagens:
+            if not c: continue
+            cnt, var = c; tot = sum(cnt.values()) or 1
+            for k, n in cnt.items():
+                score[k] = score.get(k,0) + n/tot
+                for lab, m in var[k].items():
+                    variantes.setdefault(k,{}); variantes[k][lab] = variantes[k].get(lab,0)+m
+        if not score: continue
+        ordem = sorted(score, key=lambda k: -score[k])
+        if len(ordem) > PESQ_COMP_MAX_CATS + 1:
+            top, resto = ordem[:PESQ_COMP_MAX_CATS], set(ordem[PESQ_COMP_MAX_CATS:])
+        else:
+            top, resto = ordem, set()
+        rotulo = lambda k: max(variantes[k].items(), key=lambda x: x[1])[0]
+        # escala numérica (ex: 0 a 5) → ordem crescente em vez de frequência
+        if all(re.fullmatch(r"\d+(\.\d+)?", k) for k in top):
+            top = sorted(top, key=float)
+        cats = [rotulo(k) for k in top]
+        idx = {k: i for i, k in enumerate(top)}
+        otros = len(cats) if resto else -1
+        if resto: cats.append("Otros")
+        def vetor(c):
+            if not c: return None
+            v = [0]*len(cats)
+            for k, n in c[0].items():
+                i = idx.get(k, otros)
+                if i >= 0: v[i] += n
+            return v
+        # mapa valor bruto (pesquisa atual) → índice da categoria, p/ recontar no JS com o filtro de origem
+        mp = {}
+        for v in df_atual[p].dropna().astype(str).unique():
+            i = idx.get(_pq_norm(v), otros)
+            if i >= 0: mp[v] = i
+        q_out[p] = {"cats": cats, "otros": otros, "mp": mp, "src": [vetor(c) for c in contagens[1:]]}
+    return {"rotulos": [PESQUISA_ATUAL_ROTULO] + [fo["rotulo"] for fo in fontes],
+            "n_src": [int(len(fo["df"])) for fo in fontes], "q": q_out}
 
 # ══ INJEÇÃO ════════════════════════════════════════════
 def replace_js_const(html, name, value):
@@ -963,6 +1053,7 @@ def main():
     df_pes=load_pesquisa()
     pes=pesquisa_process(df_pes, hot_k["qtd"])
     print(f"  ✓ {pes['total']} respostas")
+    pes["comp"]=pesquisa_comparativo(df_pes, pes["perguntas"])
 
     print("\n[HTML]")
     if not Path(TEMPLATE_FILE).exists():
