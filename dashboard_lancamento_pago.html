@@ -237,20 +237,30 @@ td.g-utm,th.g-utm{background:rgba(217,119,6,.06);}
 .pl-pct{font-family:'DM Mono',monospace;font-weight:700;font-size:10px;}
 
 /* PESQUISA COMPARATIVO */
-.pzc-nota{font-size:11px;color:var(--muted);margin:0 0 12px;}
+.pzc-top{display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap;margin:0 0 12px;}
+.pzc-nota{font-size:11px;color:var(--muted);}
+.pzc-vsel{display:flex;align-items:center;gap:4px;background:var(--surface);border:1px solid var(--border);border-radius:9px;padding:3px;}
+.pzc-vlbl{font-size:9px;font-weight:700;text-transform:uppercase;letter-spacing:.6px;color:var(--muted2);padding:0 6px;}
+.pzc-vb{border:0;background:transparent;padding:5px 11px;border-radius:7px;font-size:11px;font-weight:600;color:var(--muted);cursor:pointer;font-family:'DM Sans',sans-serif;}
+.pzc-vb.active{background:var(--accent);color:#fff;}
+[data-theme="dark"] .pzc-vb.active{background:var(--text);color:var(--bg);}
+.pzc-bw{position:relative;width:100%;}
+.pzc-one{position:relative;width:100%;margin:6px 0 12px;}
+.pzc-leg{display:flex;gap:14px;flex-wrap:wrap;margin-top:8px;font-size:11px;color:var(--text);}
+.pzc-lg{display:inline-flex;align-items:center;}
 .pzc-grid{display:flex;flex-direction:column;gap:12px;margin-bottom:14px;}
 .pzc-card{background:var(--surface);border:1px solid var(--border);border-radius:var(--r);padding:14px;box-shadow:var(--sh);}
 .pzc-row{display:grid;grid-template-columns:1fr 2fr;gap:12px;margin:10px 0 12px;align-items:stretch;}
 .pzc-atual,.pzc-ant{border-radius:10px;padding:10px 8px 12px;}
-.pzc-atual{background:color-mix(in srgb,var(--accent) 9%,var(--surface));border:2px solid color-mix(in srgb,var(--accent) 70%,transparent);box-shadow:var(--sh);}
+.pzc-atual{background:#eefaf2;border:2px solid #9fd9b2;box-shadow:var(--sh);}
 .pzc-ant{border:1px dashed var(--border);}
 .pzc-ant-in{display:grid;grid-template-columns:1fr 1fr;gap:12px;}
 .pzc-grp{font-size:9px;font-weight:700;text-transform:uppercase;letter-spacing:.8px;color:var(--muted2);text-align:center;margin-bottom:8px;}
-.pzc-atual .pzc-grp{color:var(--accent);}
-[data-theme="dark"] .pzc-atual{background:rgba(255,255,255,.05);border-color:rgba(255,255,255,.22);}
-[data-theme="dark"] .pzc-atual .pzc-grp{color:var(--text);}
-.pzc-tbl th.atual,.pzc-tbl td.atual{background:color-mix(in srgb,var(--accent) 7%,var(--surface));}
-[data-theme="dark"] .pzc-tbl th.atual,[data-theme="dark"] .pzc-tbl td.atual{background:rgba(255,255,255,.05);}
+.pzc-atual .pzc-grp{color:#15803d;}
+[data-theme="dark"] .pzc-atual{background:rgba(74,222,128,.07);border-color:rgba(74,222,128,.35);}
+[data-theme="dark"] .pzc-atual .pzc-grp{color:#86efac;}
+.pzc-tbl th.atual,.pzc-tbl td.atual{background:#eefaf2;}
+[data-theme="dark"] .pzc-tbl th.atual,[data-theme="dark"] .pzc-tbl td.atual{background:rgba(74,222,128,.07);}
 .pzc-col{display:flex;flex-direction:column;align-items:center;min-width:0;}
 .pzc-ttl{font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.6px;color:var(--muted);text-align:center;margin-bottom:6px;}
 .pzc-ttl.atual{color:var(--text);}
@@ -679,7 +689,7 @@ const I18N={
   'Lançamento atual':'Lanzamiento actual','Captação ago/26':'Captación ago/26','Alunos ago/26':'Alumnas ago/26',
   'Resposta':'Respuesta','Pergunta não existe nesta pesquisa':'La pregunta no existe en esta encuesta',
   'Δ atual vs alunos':'Δ actual vs alumnas',
-  'Atual · filtrável':'Actual · filtrable','Anteriores · fixas':'Anteriores · fijas',
+  'Atual · filtrável':'Actual · filtrable','Visualização':'Visualización','Pizza':'Torta','Barras':'Barras','Comparativo':'Comparativo','Anteriores · fixas':'Anteriores · fijas',
   'País (campanha)':'País (campaña)','Campanha (UTM)':'Campaña (UTM)','(ambígua)':'(ambigua)',
   'Respostas':'Respuestas','na pesquisa':'en la encuesta','Taxa Resp./Vendas':'Tasa Resp./Ventas','respostas / vendas':'respuestas / ventas',
   'Comparativo com pesquisas anteriores · as anteriores são fixas — o filtro de origem altera só':'Comparativo con encuestas anteriores · las anteriores son fijas — el filtro de origen cambia solo',
@@ -3467,13 +3477,20 @@ function buildPizzas(){
 const PZC_CORES={light:['#2a78d6','#eb6834','#1baf7a','#eda100','#e87ba4','#008300','#4a3aa7','#e34948'],
                  dark: ['#3987e5','#d95926','#199e70','#c98500','#d55181','#008300','#9085e9','#e66767']};
 const PZC_OUTROS='#94a3b8';
+// comparativo único: cor = pesquisa (atual verde · captação azul · alunos laranja) — validado (CVD/contraste)
+const PZC_SERIES={light:['#1baf7a','#2a78d6','#eb6834'],dark:['#199e70','#3987e5','#d95926']};
 function buildPesqComparativo(rows){
   const C=PESQUISA.comp, grid=document.getElementById('pizzaGrid');
   const dark=document.documentElement.getAttribute('data-theme')==='dark';
   const pal=dark?PZC_CORES.dark:PZC_CORES.light;
-  const surf=getComputedStyle(document.documentElement).getPropertyValue('--surface').trim()||(dark?'#1a1a19':'#fff');
+  const css=getComputedStyle(document.documentElement);
+  const surf=css.getPropertyValue('--surface').trim()||(dark?'#1a1a19':'#fff');
+  const muted=css.getPropertyValue('--muted').trim()||'#6b7280';
+  const gridc=dark?'rgba(255,255,255,.07)':'rgba(0,0,0,.06)';
   const cor=(q,i)=>i===q.otros?PZC_OUTROS:pal[i%pal.length];
+  const serieCor=PZC_SERIES[dark?'dark':'light'];
   const rot=C.rotulos||[];
+  const modo=pzcModo();
   const perg=PESQUISA.perguntas.filter(p=>C.q[p]);
   // contagens por pergunta: [atual(filtrada), ...anteriores(fixas)]
   const dados=perg.map(p=>{
@@ -3484,46 +3501,92 @@ function buildPesqComparativo(rows){
   });
   const pct=(v,t)=>t>0?(v/t*100):null;
   const fp=x=>x==null?'—':x.toFixed(1)+'%';
+  Object.keys(PC).filter(k=>k.startsWith('pzc_')).forEach(k=>{try{PC[k].destroy();}catch(e){} delete PC[k];});
+  const btn=(m,l)=>`<button class="pzc-vb${modo===m?' active':''}" onclick="pzcSetModo('${m}')">${t(l)}</button>`;
   grid.className='pzc-grid';
-  grid.innerHTML=`<div class="pzc-nota"><span>${t('Comparativo com pesquisas anteriores · as anteriores são fixas — o filtro de origem altera só')}</span> <b>${t(rot[0]||'')}</b></div>`+
+  grid.innerHTML=`<div class="pzc-top"><div class="pzc-nota"><span>${t('Comparativo com pesquisas anteriores · as anteriores são fixas — o filtro de origem altera só')}</span> <b>${t(rot[0]||'')}</b></div>
+    <div class="pzc-vsel"><span class="pzc-vlbl">${t('Visualização')}</span>${btn('pizza','Pizza')}${btn('barras','Barras')}${btn('comp','Comparativo')}</div></div>`+
   dados.map((d,qi)=>{
     const tots=d.series.map(s=>s?s.reduce((a,b)=>a+b,0):null);
-    const cols=d.series.map((s,si)=>{
-      const ttl=`<div class="pzc-ttl${si===0?' atual':''}">${t(rot[si]||'')}<span class="pzc-n">n=${tots[si]==null?'—':fN(tots[si])}</span></div>`;
-      if(!s) return `<div class="pzc-col">${ttl}<div class="pzc-vazio">${t('Pergunta não existe nesta pesquisa')}</div></div>`;
-      return `<div class="pzc-col">${ttl}<div class="pzc-cw"><canvas id="pzc_${qi}_${si}"></canvas></div></div>`;
-    });
     const iAl=d.series.length-1; const temDelta=d.series.length>2&&d.series[iAl];
     const linhas=d.q.cats.map((c,ci)=>{
       const ps=d.series.map((s,si)=>s?pct(s[ci],tots[si]):null);
       const dl=temDelta&&ps[0]!=null&&ps[iAl]!=null?(ps[0]-ps[iAl]):null;
-      return `<tr><td><span class="pzc-dot" style="background:${cor(d.q,ci)}"></span>${c}</td>`+
+      return `<tr><td>${modo==='comp'?'':`<span class="pzc-dot" style="background:${cor(d.q,ci)}"></span>`}${c}</td>`+
         ps.map((x,si)=>`<td class="${si===0?'atual':''}">${d.series[si]?fp(x):'—'}</td>`).join('')+
         (temDelta?`<td>${dl==null?'—':(dl>0?'+':'')+dl.toFixed(1)+' pp'}</td>`:'')+`</tr>`;
     }).join('');
-    const colsArr=cols;
-    const bloco=`<div class="pzc-atual"><div class="pzc-grp">${t('Atual · filtrável')}</div>${colsArr[0]}</div>`+
-      `<div class="pzc-ant"><div class="pzc-grp">${t('Anteriores · fixas')}</div><div class="pzc-ant-in">${colsArr.slice(1).join('')}</div></div>`;
-    return `<div class="pzc-card"><div class="pz-q">${d.p}</div><div class="pzc-row">${bloco}</div>
-      <div class="pzc-tw"><table class="pzc-tbl"><thead><tr><th>${t('Resposta')}</th>${rot.map((r,ri)=>`<th class="${ri===0?'atual':''}">${t(r)}</th>`).join('')}${temDelta?`<th>${t('Δ atual vs alunos')}</th>`:''}</tr></thead>
-      <tbody>${linhas}</tbody></table></div></div>`;
+    const tabela=`<div class="pzc-tw"><table class="pzc-tbl"><thead><tr><th>${t('Resposta')}</th>${rot.map((r,ri)=>`<th class="${ri===0?'atual':''}">${modo==='comp'?`<span class="pzc-dot" style="background:${serieCor[ri%serieCor.length]}"></span>`:''}${t(r)}</th>`).join('')}${temDelta?`<th>${t('Δ atual vs alunos')}</th>`:''}</tr></thead>
+      <tbody>${linhas}</tbody></table></div>`;
+    if(modo==='comp'){
+      const h=Math.max(160,d.q.cats.length*(d.series.length*14+14)+40);
+      const leg=rot.map((r,ri)=>`<span class="pzc-lg"><span class="pzc-dot" style="background:${serieCor[ri%serieCor.length]}"></span>${t(r)} <span class="pzc-n">n=${tots[ri]==null?'—':fN(tots[ri])}</span></span>`).join('');
+      return `<div class="pzc-card"><div class="pz-q">${d.p}</div><div class="pzc-leg">${leg}</div>
+        <div class="pzc-one" style="height:${h}px"><canvas id="pzc_${qi}_c"></canvas></div>${tabela}</div>`;
+    }
+    const cols=d.series.map((s,si)=>{
+      const ttl=`<div class="pzc-ttl${si===0?' atual':''}">${t(rot[si]||'')}<span class="pzc-n">n=${tots[si]==null?'—':fN(tots[si])}</span></div>`;
+      if(!s) return `<div class="pzc-col">${ttl}<div class="pzc-vazio">${t('Pergunta não existe nesta pesquisa')}</div></div>`;
+      const hb=Math.max(120,d.q.cats.length*22+16);
+      return `<div class="pzc-col">${ttl}<div class="${modo==='barras'?'pzc-bw':'pzc-cw'}"${modo==='barras'?` style="height:${hb}px"`:''}><canvas id="pzc_${qi}_${si}"></canvas></div></div>`;
+    });
+    const bloco=`<div class="pzc-atual"><div class="pzc-grp">${t('Atual · filtrável')}</div>${cols[0]}</div>`+
+      `<div class="pzc-ant"><div class="pzc-grp">${t('Anteriores · fixas')}</div><div class="pzc-ant-in">${cols.slice(1).join('')}</div></div>`;
+    return `<div class="pzc-card"><div class="pz-q">${d.p}</div><div class="pzc-row">${bloco}</div>${tabela}</div>`;
   }).join('');
-  dados.forEach((d,qi)=>d.series.forEach((s,si)=>{
-    if(!s) return; const id=`pzc_${qi}_${si}`, el=document.getElementById(id); if(!el) return;
-    if(PC[id]){PC[id].destroy();delete PC[id];}
-    const tot=s.reduce((a,b)=>a+b,0);
-    if(!tot){el.parentElement.innerHTML=`<div class="pzc-vazio">—</div>`;return;}
-    PC[id]=new Chart(el,{type:'doughnut',
-      data:{labels:d.q.cats,datasets:[{data:s,backgroundColor:d.q.cats.map((_,ci)=>cor(d.q,ci)),borderColor:surf,borderWidth:2}]},
-      options:{responsive:true,maintainAspectRatio:false,cutout:'55%',plugins:{
-        legend:{display:false},
-        tooltip:{callbacks:{label:ctx=>`${ctx.label}: ${fN(ctx.raw)} (${(ctx.raw/tot*100).toFixed(1)}%)`}},
-        datalabels:{display:ctx=>ctx.dataset.data[ctx.dataIndex]/tot>=0.07,color:'#fff',font:{size:9,weight:'bold'},
-          formatter:v=>(v/tot*100).toFixed(0)+'%'}
-      }}});
-  }));
+
+  const tickCurto=(lbl,max)=>{const s=String(lbl);return s.length>max?s.slice(0,max-1)+'…':s;};
+  const eixoPct={grid:{color:gridc},ticks:{color:muted,font:{size:9},callback:v=>v+'%'},beginAtZero:true};
+  dados.forEach((d,qi)=>{
+    const tots=d.series.map(s=>s?s.reduce((a,b)=>a+b,0):0);
+    if(modo==='comp'){
+      const el=document.getElementById(`pzc_${qi}_c`); if(!el) return;
+      const ds=d.series.map((s,si)=>({label:t(rot[si]||''),
+        data:s?s.map(v=>tots[si]>0?+(v/tots[si]*100).toFixed(1):0):d.q.cats.map(()=>null),
+        backgroundColor:serieCor[si%serieCor.length],borderRadius:4,borderSkipped:'start',
+        barPercentage:.9,categoryPercentage:.8})).filter((x,si)=>d.series[si]);
+      PC[el.id]=new Chart(el,{type:'bar',data:{labels:d.q.cats,datasets:ds},
+        options:{indexAxis:'y',responsive:true,maintainAspectRatio:false,animation:false,
+          scales:{x:{...eixoPct,suggestedMax:Math.min(100,Math.ceil(Math.max(...ds.flatMap(x=>x.data.filter(v=>v!=null)),10)/10)*10+10)},
+                  y:{grid:{display:false},ticks:{color:muted,font:{size:10},autoSkip:false,callback:function(v){return tickCurto(this.getLabelForValue(v),48);}}}},
+          plugins:{legend:{display:false},
+            tooltip:{callbacks:{label:ctx=>`${ctx.dataset.label}: ${ctx.raw==null?'—':ctx.raw.toFixed(1)+'%'}`}},
+            datalabels:{display:ctx=>{const v=ctx.dataset.data[ctx.dataIndex];return showLabels&&v!=null&&v>0;},anchor:'end',align:'end',offset:2,clip:false,color:muted,font:{size:8,weight:'bold'},formatter:v=>v.toFixed(0)+'%'}}}});
+      return;
+    }
+    d.series.forEach((s,si)=>{
+      if(!s) return; const id=`pzc_${qi}_${si}`, el=document.getElementById(id); if(!el) return;
+      const tot=tots[si];
+      if(!tot){el.parentElement.innerHTML=`<div class="pzc-vazio">—</div>`;return;}
+      // escala comum às 3 pesquisas da pergunta (barras comparáveis entre colunas)
+      const maxQ=Math.min(100,Math.max(5,...d.series.map((x,xi)=>x&&tots[xi]?Math.max(...x)/tots[xi]*100:0))*1.12);
+      if(modo==='barras'){
+        const vals=s.map(v=>+(v/tot*100).toFixed(1));
+        PC[id]=new Chart(el,{type:'bar',data:{labels:d.q.cats,datasets:[{data:vals,backgroundColor:d.q.cats.map((_,ci)=>cor(d.q,ci)),borderRadius:4,borderSkipped:'start',barPercentage:.85,categoryPercentage:.9}]},
+          options:{indexAxis:'y',responsive:true,maintainAspectRatio:false,animation:false,
+            layout:{padding:{right:30}},
+            scales:{x:{display:false,beginAtZero:true,max:maxQ},
+                    y:{display:false}},
+            plugins:{legend:{display:false},
+              tooltip:{callbacks:{title:items=>items[0]?.label||'',label:ctx=>`${fN(s[ctx.dataIndex])} (${ctx.raw.toFixed(1)}%)`}},
+              datalabels:{display:ctx=>showLabels&&ctx.dataset.data[ctx.dataIndex]>0,anchor:'end',align:'end',offset:2,clip:false,color:muted,font:{size:8,weight:'bold'},formatter:v=>v.toFixed(0)+'%'}}}});
+        return;
+      }
+      PC[id]=new Chart(el,{type:'doughnut',
+        data:{labels:d.q.cats,datasets:[{data:s,backgroundColor:d.q.cats.map((_,ci)=>cor(d.q,ci)),borderColor:surf,borderWidth:2}]},
+        options:{responsive:true,maintainAspectRatio:false,cutout:'55%',plugins:{
+          legend:{display:false},
+          tooltip:{callbacks:{label:ctx=>`${ctx.label}: ${fN(ctx.raw)} (${(ctx.raw/tot*100).toFixed(1)}%)`}},
+          datalabels:{display:ctx=>showLabels&&ctx.dataset.data[ctx.dataIndex]/tot>=0.07,color:'#fff',font:{size:9,weight:'bold'},
+            formatter:v=>(v/tot*100).toFixed(0)+'%'}
+        }}});
+    });
+  });
   if(typeof LANG!=='undefined'&&LANG==='es'&&typeof translateAll==='function') translateAll();
 }
+const LS_PZC='pzc_modo';
+function pzcModo(){let m='pizza';try{m=localStorage.getItem(LS_PZC)||'pizza';}catch(e){} return ['pizza','barras','comp'].includes(m)?m:'pizza';}
+function pzcSetModo(m){try{localStorage.setItem(LS_PZC,m);}catch(e){} buildPizzas();}
 
 // ═══ CONTROLES ═══
 function setPeriod(days,btn){
