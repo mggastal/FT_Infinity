@@ -668,6 +668,7 @@ const I18N={
   'Lançamento atual':'Lanzamiento actual','Captação ago/26':'Captación ago/26','Alunos ago/26':'Alumnas ago/26',
   'Resposta':'Respuesta','Pergunta não existe nesta pesquisa':'La pregunta no existe en esta encuesta',
   'Δ atual vs alunos':'Δ actual vs alumnas',
+  'Respostas':'Respuestas','na pesquisa':'en la encuesta','Taxa Resp./Vendas':'Tasa Resp./Ventas','respostas / vendas':'respuestas / ventas',
   'Comparativo com pesquisas anteriores · as anteriores são fixas — o filtro de origem altera só':'Comparativo con encuestas anteriores · las anteriores son fijas — el filtro de origen cambia solo',
   // Menu / topbar
   'Métricas Diárias':'Métricas Diarias','Pesquisa':'Encuesta','Lançamento':'Lanzamiento',
@@ -819,10 +820,8 @@ function translateAll(){
 function toggleLang(){
   LANG=LANG==='es'?'pt':'es';
   try{localStorage.setItem(LS_LANG,LANG);}catch(e){}
-  // Recarregar renders (gráficos canvas pegam labels traduzidos via t())
-  try{if(typeof renderOverview==='function')renderOverview();}catch(e){}
-  try{if(typeof renderMeta==='function')renderMeta();}catch(e){}
-  try{if(typeof renderDiario==='function')renderDiario();}catch(e){}
+  // Recarregar a página ativa (qualquer uma: gráficos canvas e textos montados via t() nascem no idioma novo)
+  try{rerenderActive();}catch(e){}
   translateAll();
 }
 let _i18nT=null;
