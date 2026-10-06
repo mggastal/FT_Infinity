@@ -247,7 +247,10 @@ td.g-utm,th.g-utm{background:rgba(217,119,6,.06);}
 .pzc-bw{position:relative;width:100%;}
 .pzc-one{position:relative;width:100%;margin:6px 0 12px;}
 .pzc-leg{display:flex;gap:14px;flex-wrap:wrap;margin-top:8px;font-size:11px;color:var(--text);}
-.pzc-lg{display:inline-flex;align-items:center;}
+.pzc-lg{display:inline-flex;align-items:center;border:1px solid var(--border);background:var(--surface);border-radius:999px;padding:3px 10px;font-size:11px;color:var(--text);cursor:pointer;font-family:'DM Sans',sans-serif;}
+.pzc-lg:hover{background:var(--surface2);}
+.pzc-lg.off{opacity:.45;text-decoration:line-through;}
+.pzc-lg.off .pzc-dot{background:transparent!important;box-shadow:inset 0 0 0 1.5px var(--muted2);}
 .pzc-grid{display:flex;flex-direction:column;gap:12px;margin-bottom:14px;}
 .pzc-card{background:var(--surface);border:1px solid var(--border);border-radius:var(--r);padding:14px;box-shadow:var(--sh);}
 .pzc-row{display:grid;grid-template-columns:1fr 2fr;gap:12px;margin:10px 0 12px;align-items:stretch;}
@@ -689,6 +692,7 @@ const I18N={
   'Lançamento atual':'Lanzamiento actual','Captação ago/26':'Captación ago/26','Alunos ago/26':'Alumnas ago/26',
   'Resposta':'Respuesta','Pergunta não existe nesta pesquisa':'La pregunta no existe en esta encuesta',
   'Δ atual vs alunos':'Δ actual vs alumnas',
+  'Clique para ocultar':'Clic para ocultar','Clique para mostrar':'Clic para mostrar',
   'Atual · filtrável':'Actual · filtrable','Visualização':'Visualización','Pizza':'Torta','Barras':'Barras','Comparativo':'Comparativo','Anteriores · fixas':'Anteriores · fijas',
   'País (campanha)':'País (campaña)','Campanha (UTM)':'Campaña (UTM)','(ambígua)':'(ambigua)',
   'Respostas':'Respuestas','na pesquisa':'en la encuesta','Taxa Resp./Vendas':'Tasa Resp./Ventas','respostas / vendas':'respuestas / ventas',
@@ -3491,6 +3495,7 @@ function buildPesqComparativo(rows){
   const serieCor=PZC_SERIES[dark?'dark':'light'];
   const rot=C.rotulos||[];
   const modo=pzcModo();
+  const vis=si=>modo!=='comp'||!pzcOcultas.has(si);   // pesquisas ocultas pela legenda (só no Comparativo)
   const perg=PESQUISA.perguntas.filter(p=>C.q[p]);
   // contagens por pergunta: [atual(filtrada), ...anteriores(fixas)]
   const dados=perg.map(p=>{
@@ -3508,19 +3513,20 @@ function buildPesqComparativo(rows){
     <div class="pzc-vsel"><span class="pzc-vlbl">${t('Visualização')}</span>${btn('pizza','Pizza')}${btn('barras','Barras')}${btn('comp','Comparativo')}</div></div>`+
   dados.map((d,qi)=>{
     const tots=d.series.map(s=>s?s.reduce((a,b)=>a+b,0):null);
-    const iAl=d.series.length-1; const temDelta=d.series.length>2&&d.series[iAl];
+    const iAl=d.series.length-1; const temDelta=d.series.length>2&&d.series[iAl]&&vis(0)&&vis(iAl);
     const linhas=d.q.cats.map((c,ci)=>{
       const ps=d.series.map((s,si)=>s?pct(s[ci],tots[si]):null);
       const dl=temDelta&&ps[0]!=null&&ps[iAl]!=null?(ps[0]-ps[iAl]):null;
       return `<tr><td>${modo==='comp'?'':`<span class="pzc-dot" style="background:${cor(d.q,ci)}"></span>`}${c}</td>`+
-        ps.map((x,si)=>`<td class="${si===0?'atual':''}">${d.series[si]?fp(x):'—'}</td>`).join('')+
+        ps.map((x,si)=>vis(si)?`<td class="${si===0?'atual':''}">${d.series[si]?fp(x):'—'}</td>`:'').join('')+
         (temDelta?`<td>${dl==null?'—':(dl>0?'+':'')+dl.toFixed(1)+' pp'}</td>`:'')+`</tr>`;
     }).join('');
-    const tabela=`<div class="pzc-tw"><table class="pzc-tbl"><thead><tr><th>${t('Resposta')}</th>${rot.map((r,ri)=>`<th class="${ri===0?'atual':''}">${modo==='comp'?`<span class="pzc-dot" style="background:${serieCor[ri%serieCor.length]}"></span>`:''}${t(r)}</th>`).join('')}${temDelta?`<th>${t('Δ atual vs alunos')}</th>`:''}</tr></thead>
+    const tabela=`<div class="pzc-tw"><table class="pzc-tbl"><thead><tr><th>${t('Resposta')}</th>${rot.map((r,ri)=>vis(ri)?`<th class="${ri===0?'atual':''}">${modo==='comp'?`<span class="pzc-dot" style="background:${serieCor[ri%serieCor.length]}"></span>`:''}${t(r)}</th>`:'').join('')}${temDelta?`<th>${t('Δ atual vs alunos')}</th>`:''}</tr></thead>
       <tbody>${linhas}</tbody></table></div>`;
     if(modo==='comp'){
-      const h=Math.max(160,d.q.cats.length*(d.series.length*14+14)+40);
-      const leg=rot.map((r,ri)=>`<span class="pzc-lg"><span class="pzc-dot" style="background:${serieCor[ri%serieCor.length]}"></span>${t(r)} <span class="pzc-n">n=${tots[ri]==null?'—':fN(tots[ri])}</span></span>`).join('');
+      const nVis=d.series.filter((x,si)=>x&&vis(si)).length||1;
+      const h=Math.max(140,d.q.cats.length*(nVis*14+14)+40);
+      const leg=rot.map((r,ri)=>`<button type="button" class="pzc-lg${vis(ri)?'':' off'}" onclick="pzcToggleSerie(${ri})" title="${t(vis(ri)?'Clique para ocultar':'Clique para mostrar')}"><span class="pzc-dot" style="background:${serieCor[ri%serieCor.length]}"></span>${t(r)} <span class="pzc-n">n=${tots[ri]==null?'—':fN(tots[ri])}</span></button>`).join('');
       return `<div class="pzc-card"><div class="pz-q">${d.p}</div><div class="pzc-leg">${leg}</div>
         <div class="pzc-one" style="height:${h}px"><canvas id="pzc_${qi}_c"></canvas></div>${tabela}</div>`;
     }
@@ -3544,7 +3550,7 @@ function buildPesqComparativo(rows){
       const ds=d.series.map((s,si)=>({label:t(rot[si]||''),
         data:s?s.map(v=>tots[si]>0?+(v/tots[si]*100).toFixed(1):0):d.q.cats.map(()=>null),
         backgroundColor:serieCor[si%serieCor.length],borderRadius:4,borderSkipped:'start',
-        barPercentage:.9,categoryPercentage:.8})).filter((x,si)=>d.series[si]);
+        barPercentage:.9,categoryPercentage:.8})).filter((x,si)=>d.series[si]&&vis(si));
       PC[el.id]=new Chart(el,{type:'bar',data:{labels:d.q.cats,datasets:ds},
         options:{indexAxis:'y',responsive:true,maintainAspectRatio:false,animation:false,
           scales:{x:{...eixoPct,suggestedMax:Math.min(100,Math.ceil(Math.max(...ds.flatMap(x=>x.data.filter(v=>v!=null)),10)/10)*10+10)},
@@ -3585,6 +3591,13 @@ function buildPesqComparativo(rows){
   if(typeof LANG!=='undefined'&&LANG==='es'&&typeof translateAll==='function') translateAll();
 }
 const LS_PZC='pzc_modo';
+let pzcOcultas=new Set();   // começa sempre com todas visíveis
+function pzcToggleSerie(si){
+  const n=(PESQUISA.comp?.rotulos||[]).length;
+  if(pzcOcultas.has(si)) pzcOcultas.delete(si);
+  else if(n-pzcOcultas.size>1) pzcOcultas.add(si);   // mantém pelo menos uma visível
+  buildPizzas();
+}
 function pzcModo(){let m='pizza';try{m=localStorage.getItem(LS_PZC)||'pizza';}catch(e){} return ['pizza','barras','comp'].includes(m)?m:'pizza';}
 function pzcSetModo(m){try{localStorage.setItem(LS_PZC,m);}catch(e){} buildPizzas();}
 
