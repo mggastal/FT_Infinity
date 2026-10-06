@@ -846,7 +846,7 @@ def load_pesquisa():
 def pesquisa_process(df, hot_qtd):
     # Perguntas dinâmicas: todas as colunas que NÃO são UTM nem de controle
     UTM_COLS=["utm_source","utm_medium","utm_campaign","utm_content"]
-    SKIP_COLS=set(UTM_COLS+["Carimbo de data/hora","Timestamp","Email","email",
+    SKIP_COLS=set(UTM_COLS+["utm_term","Carimbo de data/hora","Timestamp","Email","email",
                              "Nome","nome","ID","id","Unnamed: 0"])
     # Considerar como pergunta qualquer coluna com texto longo (provável questão)
     def _pergunta_valida(c):
@@ -881,6 +881,44 @@ def pesquisa_process(df, hot_qtd):
         for col in UTM_COLS: row[col]=str(r[col]) if col in df.columns and pd.notna(r.get(col)) else None
         rows.append(row)
     return {"total":len(df),"hot_qtd":int(hot_qtd),"graficos":graficos,"filtros":filtros,"rows":rows,"perguntas":PERGUNTAS}
+
+def pesquisa_campanha(df_pes, df_meta, pes):
+    """Nome real da campanha de cada resposta da Pesquisa. O formulário traz utm_campaign = código do
+    lançamento (igual p/ todas), então a campanha é deduzida pelo par conjunto (utm_medium) + anúncio
+    (utm_content) no Meta; empate entre campanhas é desempatado pela que teve investimento no dia da
+    resposta. Se a aba passar a ter utm_term (nome da campanha), ele é usado direto."""
+    if pes is None or df_pes is None or len(df_pes)==0: return
+    def lim(v):
+        t=str(v).strip() if pd.notna(v) else ""
+        return "" if (not t or t.lower()=="nan" or "%7B" in t or "{{" in t) else t
+    m = df_meta[["date","campaign","adset","ad","spend"]].copy()
+    m["adset"]=m["adset"].astype(str).str.strip(); m["ad"]=m["ad"].astype(str).str.strip()
+    par = m.groupby(["adset","ad"])["campaign"].unique().to_dict()
+    so_conj = m.groupby("adset")["campaign"].unique().to_dict()
+    gasto = m[m["spend"]>0].groupby("campaign")["date"].apply(lambda d:set(d.dt.normalize())).to_dict()
+    tem_term = "utm_term" in df_pes.columns
+    datas = pd.to_datetime(df_pes.get("Marca temporal", pd.Series([None]*len(df_pes))), dayfirst=True, errors="coerce")
+    stats = {"utm_term":0,"unica":0,"por_data":0,"ambigua":0,"sem":0}
+    camps = []
+    for i,(_,r) in enumerate(df_pes.iterrows()):
+        c = lim(r.get("utm_term")) if tem_term else ""
+        if c: stats["utm_term"]+=1; camps.append(c); continue
+        med, cont = lim(r.get("utm_medium")), lim(r.get("utm_content"))
+        cand = list(par.get((med,cont), [])) if med and cont else []
+        if not cand and med: cand = list(so_conj.get(med, []))
+        if not cand: stats["sem"]+=1; camps.append(None); continue
+        if len(cand)==1: stats["unica"]+=1; camps.append(cand[0]); continue
+        d = datas.iloc[i]
+        if pd.notna(d):
+            ativas = [c for c in cand if d.normalize() in gasto.get(c,set())]
+            if len(ativas)==1: stats["por_data"]+=1; camps.append(ativas[0]); continue
+        stats["ambigua"]+=1; camps.append("(ambígua)")
+    for row, c in zip(pes["rows"], camps): row["campanha"] = c
+    pes["filtros"]["campanha"] = sorted({c for c in camps if c})
+    # utm_campaign é só o código do lançamento → filtro inútil quando tem 1 valor
+    if len(pes["filtros"].get("utm_campaign",[]))<=1: pes["filtros"].pop("utm_campaign",None)
+    print(f"  Pesquisa → campanha: {stats['unica']} únicas · {stats['por_data']} desempatadas pela data · "
+          f"{stats['ambigua']} ambíguas · {stats['sem']} sem UTM" + (f" · {stats['utm_term']} via utm_term" if tem_term else ""))
 
 def _pq_norm(s):
     """Normaliza texto de pergunta/resposta p/ casar entre pesquisas (espaços, acento, caixa, ':' final)."""
@@ -1053,6 +1091,7 @@ def main():
     df_pes=load_pesquisa()
     pes=pesquisa_process(df_pes, hot_k["qtd"])
     print(f"  ✓ {pes['total']} respostas")
+    pesquisa_campanha(df_pes, df_meta, pes)
     pes["comp"]=pesquisa_comparativo(df_pes, pes["perguntas"])
 
     print("\n[HTML]")
