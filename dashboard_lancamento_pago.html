@@ -401,7 +401,7 @@ td.g-utm,th.g-utm{background:rgba(217,119,6,.06);}
         <div class="cc">
           <div class="cc-t"><span id="ttlVendasDiarias">Vendas Diárias (Eduzz) & Investimento</span>
             <span class="gran-pills"><button class="gp active" data-g="dia" onclick="setOvGran('dia',this)">Diário</button><button class="gp" data-g="sem" onclick="setOvGran('sem',this)">Semanal</button><button class="gp" data-g="mes" onclick="setOvGran('mes',this)">Mensal</button></span></div>
-          <div class="cc-s">Vendas (barras laranja) · Invest. Meta (linha verde) · CPV (linha preta)</div>
+          <div class="cc-s">Vendas (barras laranja) · Invest. Meta (linha verde) · CPV (linha preta) · ROAS (linha roxa, opcional: clique em "ROAS" na legenda)</div>
           <div class="cw" style="height:230px"><canvas id="chOvMain"></canvas></div>
         </div>
         <div class="cc" id="cardOrigem">
@@ -710,7 +710,7 @@ const I18N={
   'Taxa de Conversão (PV→Compra)':'Tasa de Conversión (PV→Compra)',
   // Gráficos
   'Vendas · Investimento · CPA':'Ventas · Inversión · CPA',
-  'Vendas (barras laranja) · Invest. Meta (linha verde) · CPV (linha preta)':'Ventas (barras naranjas) · Invers. Meta (línea verde) · CPV (línea negra)',
+  'Vendas (barras laranja) · Invest. Meta (linha verde) · CPV (linha preta) · ROAS (linha roxa, opcional: clique em "ROAS" na legenda)':'Ventas (barras naranjas) · Invers. Meta (línea verde) · CPV (línea negra) · ROAS (línea violeta, opcional: clic en "ROAS" en la leyenda)',
   'Vendas Meta (barras azuis) · Invest. (linha verde) · CPA (linha preta tracejada)':'Ventas Meta (barras azules) · Invers. (línea verde) · CPA (línea negra punteada)',
   'Invest.':'Invers.','CPV':'CPV','CPA':'CPA','Vendas Diárias':'Ventas Diarias',
   // Seções / tabelas
@@ -1522,16 +1522,24 @@ function renderOverview(){
     (md?.days||[]).forEach((d,i)=>{metaSpend[d]=(metaSpend[d]||0)+(md.spend[i]||0);});
     const hm={},hval={};
     (hd?.days||[]).forEach((d,i)=>{hm[d]=(hm[d]||0)+(hd.qtd[i]||0);hval[d]=(hval[d]||0)+(hd.valor[i]||0);});
+    // faturamento do dia p/ a linha de ROAS: captação + upsells (mesma base do KPI de ROAS)
+    const upsDia={};
+    (UPSELLS_RAW||[]).forEach(r=>{if(filtroPago&&r.org!=='Pago') return; upsDia[r.d]=r2((upsDia[r.d]||0)+(r.v||0));});
     let vendas=days.map(d=>hm[d]||null);
     let invest=days.map(d=>metaSpend[d]||null);
+    let fatDia=days.map(d=>{const f=(hval[d]||0)+(upsDia[d]||0);return f>0?r2(f):null;});
     let ovLabels=days;
     if(ovGran!=='dia'){
       const bk=granBuckets(days,ovGran);
       ovLabels=bk.labels;
       vendas=granSum(vendas,bk.groups);
       invest=granSum(invest,bk.groups);
+      fatDia=granSum(fatDia,bk.groups);
     }
     const cpv=ovLabels.map((_,i)=>{const v=vendas[i]||0;const s=invest[i]||0;return v>0&&s>0?r2(s/v):null;});
+    const roasL=ovLabels.map((_,i)=>{const f=fatDia[i]||0;const s=invest[i]||0;return s>0&&f>0?r2(f/s):null;});
+    // ROAS começa desligado; o clique na legenda liga/desliga e a escolha vale até recarregar a página
+    const roasVis=!!(CH['chOvMain']&&CH['chOvMain'].__roasOn);
 
     dc('chOvMain');
     CH['chOvMain']=new Chart(document.getElementById('chOvMain'),{
@@ -1539,6 +1547,8 @@ function renderOverview(){
         {label:t('Vendas'),data:vendas,backgroundColor:'rgba(249,115,22,.75)',borderRadius:3,type:'bar',yAxisID:'y1',
          datalabels:{...makeDatalabels('#f97316','',v=>v!=null?fN(v):null),display:ctx=>showLabels}},
         {label:t('Invest.'),data:invest,borderColor:'#059669',backgroundColor:'transparent',tension:.3,pointRadius:2,borderWidth:2,type:'line',spanGaps:true,datalabels:{display:false}},
+        {label:'ROAS',data:roasL,borderColor:'#8b5cf6',borderDash:[2,3],backgroundColor:'transparent',tension:.3,pointRadius:2,borderWidth:1.5,type:'line',yAxisID:'y3',spanGaps:true,hidden:!roasVis,
+         datalabels:{display:ctx=>showLabels,color:'#7c3aed',font:{size:labelSize,weight:'bold'},align:'top',offset:2,formatter:v=>v!=null?v.toFixed(2)+'x':null}},
         {label:t('CPV'),data:cpv,borderColor:'#111',borderDash:[5,3],backgroundColor:'transparent',tension:.3,pointRadius:2,borderWidth:1.5,type:'line',yAxisID:'y2',spanGaps:true,datalabels:{display:ctx=>showLabels,color:'#333',font:{size:labelSize,weight:'bold'},formatter:v=>v!=null?MOEDA+v.toFixed(0):null,anchor:'end',align:'top',offset:2,clip:false}},
       ]},
       options:{...bo(),scales:{
@@ -1546,8 +1556,13 @@ function renderOverview(){
         y:{beginAtZero:true,ticks:{color:TXT(),font:bf,callback:v=>MOEDA+v.toLocaleString()},grid:{color:GRID()}},
         y1:{beginAtZero:true,position:'right',ticks:{color:'#f97316',font:bf},grid:{display:false},grace:'20%'},
         y2:{position:'right',ticks:{color:'#555',font:bf,callback:v=>MOEDA+v.toFixed(0)},grid:{display:false},offset:true},
-      }}
+        y3:{display:'auto',position:'right',beginAtZero:true,ticks:{color:'#8b5cf6',font:bf,callback:v=>v.toFixed(1)+'x'},grid:{display:false}},
+      },plugins:{...bo().plugins,legend:{...bo().plugins.legend,onClick:(e,item,legend)=>{
+        const ch=legend.chart; const i=item.datasetIndex; const vis=ch.isDatasetVisible(i);
+        ch.setDatasetVisibility(i,!vis); if(ch.data.datasets[i].label==='ROAS') ch.__roasOn=!vis; ch.update();
+      }}}}
     });
+    if(roasVis) CH['chOvMain'].__roasOn=true;
   }
 
   // Origem e produto — filtrar HOT_RAW pelo período atual
