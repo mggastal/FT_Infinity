@@ -3,11 +3,11 @@
   "cor": "#252F26",
   "letra": "LF",
   "lancamento": "CERT-ELF-OUT-2026",
-  "atualizado": "24/10/2026",
+  "atualizado": "25/10/2026",
   "kpis": {
-    "spend": 22261.69,
-    "vendas": 1084,
-    "faturamento": 10840.0,
-    "cpa": 43.48
+    "spend": 22334.62,
+    "vendas": 1086,
+    "faturamento": 10860.0,
+    "cpa": 43.54
   }
 }
