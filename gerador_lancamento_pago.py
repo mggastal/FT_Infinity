@@ -669,28 +669,45 @@ def _class_sck(txt):
     u = dict(VAZIO); u["uc"] = t[:60]
     return "Orgânico", lado, u
 
+def _norm_nome(t):
+    t = _ud.normalize("NFKD", str(t or "")).encode("ascii","ignore").decode().lower()
+    return " ".join(t.split()) if t and t!="nan" else ""
+
 def _jornada_acceso():
-    """Índice por e-mail das compras do Acceso: {email: {pago:bool, lado:str}} (cacheado)."""
+    """Índice das compras da captação (Acceso VIP / Taller LNC) — e-mails nunca vão para o HTML.
+    → {"email":{email: j}, "nome":{nome_normalizado: j}} com j = {pago, lado, cod, ps, utms}.
+    Prioriza a compra PAGA do comprador (é a que diz de qual anúncio/campanha ele veio)."""
     global _JORN_CACHE
     if _JORN_CACHE is not None: return _JORN_CACHE
-    jorn = {}
+    por_email, por_nome = {}, {}
     if _DF_HOT_ALL is not None:
         df = _DF_HOT_ALL
         colA = {c.replace("Sales History ","").strip(): c for c in df.columns}
         ev = df[df["Produto"].isin(PRODUTOS_HOTMART)].copy()
         ev["oferta"] = g_on(ev,colA,"Offer Code").astype(str).str.strip().str.lower()
         ev["_sck"]  = g_on(ev,colA,"Tracking Source SCK").astype(str)
+        ev["_nome"] = g_on(ev,colA,"Buyer Name").apply(_norm_nome)
+        ev["_date"] = pd.to_datetime(g_on(ev,colA,"Order Date"), errors="coerce")
+        pais_col = next((c for c in ev.columns if _norm_pais(c) in ("pais","country","pais do comprador")), None)
+        ev["_ps"] = ev[pais_col].apply(pais_code) if pais_col else ""
         pago_set = {o.lower() for o in OFERTAS_PAGO}
+        ev = ev.sort_values("_date")
         for _,r in ev.iterrows():
-            em = r["_email"]
-            if not em or em=="nan": continue
-            j = jorn.setdefault(em, {"pago":False,"lado":""})
-            if r["oferta"] in pago_set: j["pago"] = True
-            if not j["lado"]:
-                d = parse_sck(r["_sck"])
-                j["lado"] = _lado_txt(" ".join(str(v) for v in d.values()).upper())
-    _JORN_CACHE = jorn
-    return jorn
+            d = parse_sck(r["_sck"])
+            pago = r["oferta"] in pago_set
+            j = {"pago":pago, "lado":_lado_txt(" ".join(str(v) for v in d.values()).upper()),
+                 "cod":r["oferta"] if r["oferta"]!="nan" else "", "ps":str(r["_ps"] or ""),
+                 "utms":{"us":d["source"],"um":d["medium"],"uc":d["campaign"],"uco":d["content"],"ut":d["term"]}}
+            for idx,k in ((por_email,r["_email"]),(por_nome,r["_nome"])):
+                if not k or k=="nan": continue
+                atual = idx.get(k)
+                if atual is None or (pago and not atual["pago"]):   # 1ª compra, ou troca por uma paga
+                    idx[k] = j
+        # nomes repetidos entre e-mails diferentes são ambíguos → fora do índice por nome
+        cont = ev.drop_duplicates(["_email","_nome"]).groupby("_nome")["_email"].nunique()
+        for n in cont[cont>1].index: por_nome.pop(n, None)
+    _JORN_CACHE = {"email":por_email, "nome":por_nome}
+    return _JORN_CACHE
 
 # ══ PRODUTO PRINCIPAL (Certificación) — atribuição por jornada ══
 def load_cert():
@@ -744,31 +761,40 @@ def load_cert():
     # ── jornada via e-mail (compras do Acceso) — índice compartilhado ──
     jorn = _jornada_acceso()
 
-    rows=[]; n_base=n_jorn=n_sem=0; n_pago=n_org=0
+    # Vendas da Certificación saem de dentro da aula → a origem principal é a da CAPTURA (compra do
+    # Taller/Acceso): 1º e-mail, 2º nome (só se único); SCK da própria venda e colunas manuais são fallback.
+    cert["_nome"] = g_on(cert,col,"Buyer Name").apply(_norm_nome)
+    rows=[]; n_base=n_jorn=n_nome=n_sem=0; n_pago=n_org=0
     for _,r in cert.iterrows():
-        org,lado,utms = _class_sck(r[org_col]) if org_col else ("","",{"us":"","um":"","uc":"","uco":"","ut":""})
-        if org:
-            n_base+=1
+        j = jorn["email"].get(r["_email"])
+        if j: n_jorn+=1
         else:
-            j = jorn.get(r["_email"])
-            if j:
-                org = "Pago" if j["pago"] else "Orgânico"
-                lado = lado or j["lado"]; n_jorn+=1
-            else:
-                n_sem+=1
+            j = jorn["nome"].get(r["_nome"]) if r["_nome"] else None
+            if j: n_nome+=1
+        if j:
+            org = "Pago" if j["pago"] else "Orgânico"
+            lado, utms = j["lado"], dict(j["utms"])
+            cod = r["cod"] or j["cod"]
+            o4  = r["o4"] if r["o4"]!="Não encontrado" else org
+            ps  = str(r["ps"] or "") or j["ps"]
+        else:
+            org,lado,utms = _class_sck(r[org_col]) if org_col else ("","",{"us":"","um":"","uc":"","uco":"","ut":""})
+            if org: n_base+=1
+            else: n_sem+=1
+            cod, o4, ps = r["cod"], r["o4"], str(r["ps"] or "")
         if org=="Pago": n_pago+=1
         elif org=="Orgânico": n_org+=1
-        rows.append({"d":r["date"].strftime("%d/%m"),"ps":str(r["ps"] or ""),
+        rows.append({"d":r["date"].strftime("%d/%m"),"ps":ps,
                      "of":str(r["of"]),"org":org,"lado":lado,
-                     "cod":str(r["cod"] or ""),"o4":str(r["o4"]), **utms})
+                     "cod":str(cod or ""),"o4":str(o4), **utms})
     info={"nome":PRODUTO_CERT["nome"],"ap":PRODUTO_CERT["apelido"],"valor":float(PRODUTO_CERT["valor"])}
-    cob=(n_base+n_jorn)/len(rows)*100 if rows else 0
+    cob=(n_base+n_jorn+n_nome)/len(rows)*100 if rows else 0
     info["cobertura"]=round(cob)
     print(f"  Cert: {len(rows)} vendas | Pago {n_pago} · Orgânico {n_org} · sem origem {n_sem}")
     from collections import Counter as _C
     _d4=_C(r["o4"] for r in rows)
     print(f"        cruzamento da aba: " + " · ".join(f"{k} {v}" for k,v in _d4.most_common()))
-    print(f"        origem: {n_base} pela base da aba · {n_jorn} pela jornada (e-mail) · cobertura {cob:.0f}%")
+    print(f"        origem: {n_jorn} pela captura (e-mail) · {n_nome} pela captura (nome) · {n_base} pelo SCK da venda · cobertura {cob:.0f}%")
     return info, rows
 
 # ══ UPSELLS (por código de oferta) ═══════════════════════
@@ -789,7 +815,7 @@ def load_upsells():
         for _,r in d.iterrows():
             org,_,_ = _class_sck(r["_sck2"])          # 1º: SCK da própria venda
             if not org:
-                j = jorn.get(r["_email"])              # 2º: jornada (compra do Acceso)
+                j = jorn["email"].get(r["_email"])     # 2º: jornada (compra do Acceso)
                 if j: org = "Pago" if j["pago"] else "Orgânico"
             if not org: org = "Pago"                   # 3º: fallback — considerar tráfego pago
             rows.append({"d":r["date"].strftime("%d/%m"),"p":u["nome"],"v":float(u["valor"]),"org":org})
