@@ -45,8 +45,8 @@ EXTRAS_ORIGEM    = "Orgânico"            # Pago | Orgânico (entra no gráfico 
 # Produto PRINCIPAL do lançamento (alto ticket) — página própria com atribuição por jornada.
 # Vendas dele não têm SCK; origem/destino são herdados da compra do Acceso VIP pelo E-MAIL do
 # comprador (cruzamento feito AQUI no gerador — e-mails nunca vão para o HTML público).
-PRODUTO_CERT = {"nome":"Longeva - Certificación ELF","apelido":"Ventas Certificación","valor":799}
-CERT_INICIO  = "05/08/2026"   # vendas ANTES desta data são teste — ignoradas
+PRODUTO_CERT = {"nome":"Longeva - Certificación en Longevidad Femenina","apelido":"Ventas Certificación","valor":897}
+CERT_INICIO  = "28/10/2026"   # vendas ANTES desta data ficam fora (oferta pkv3h4s7 de outubro não é do lançamento; carrinho abriu 28/10 22:33)
 # Upsells do lançamento — identificados pelo CÓDIGO DE OFERTA (o produto pode vender por outras ofertas fora do lançamento)
 # "oferta" aceita um código ou uma lista (ex: oferta de upsell + oferta de order bump do mesmo produto)
 UPSELLS = [{"oferta":["mw36twfc","fknjhnbl"],"nome":"Recetario Zonas Azules","valor":19},          # fknjhnbl = bump LNC (ID 8647854)
