@@ -372,8 +372,8 @@ td.g-utm,th.g-utm{background:rgba(217,119,6,.06);}
         <button class="pb" onclick="setPeriod(1,this)">Ontem</button>
         <button class="pb" onclick="setPeriod(7,this)">7d</button>
         <button class="pb" onclick="setPeriod(14,this)">14d</button>
-        <button class="pb active" onclick="setPeriod(30,this)">30d</button>
-        <button class="pb" onclick="setPeriod(0,this)">Tudo</button>
+        <button class="pb" onclick="setPeriod(30,this)">30d</button>
+        <button class="pb active" onclick="setPeriod(0,this)">Tudo</button>
       </div>
       <div class="date-range">
         <input type="date" id="dtI"><span>→</span><input type="date" id="dtF">
@@ -888,7 +888,7 @@ const CPM_BOM=40.0;
 const CPM_MEDIO=60.0;
 
 // ═══ ESTADO ═══
-let filtroLct=true, periodDays=30, dateI=null, dateF=null, showLabels=true, labelSize=8;
+let filtroLct=true, periodDays=0, dateI=null, dateF=null, showLabels=true, labelSize=8;
 let ovGran='dia', metaGran='dia', diaGran='dia';
 let metaCampSel=new Set(); // filtro de campanhas da página Meta Ads (vazio = todas)
 
