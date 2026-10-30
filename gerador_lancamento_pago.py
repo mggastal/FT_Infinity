@@ -46,6 +46,9 @@ EXTRAS_ORIGEM    = "Orgânico"            # Pago | Orgânico (entra no gráfico 
 # Vendas dele não têm SCK; origem/destino são herdados da compra do Acceso VIP pelo E-MAIL do
 # comprador (cruzamento feito AQUI no gerador — e-mails nunca vão para o HTML público).
 PRODUTO_CERT = {"nome":"Longeva - Certificación en Longevidad Femenina","apelido":"Ventas Certificación","valor":897}
+# Fuso das vendas: o Stract entrega a Hotmart em Brasília (zone -3). O lançamento é no México
+# (CDMX = UTC-6 fixo, sem horário de verão desde 2022) → desloca -3h para o dia bater com o painel.
+FUSO_VENDAS_H = -3
 CERT_INICIO  = "28/10/2026"   # vendas ANTES desta data ficam fora (oferta pkv3h4s7 de outubro não é do lançamento; carrinho abriu 28/10 22:33)
 # Upsells do lançamento — identificados pelo CÓDIGO DE OFERTA (o produto pode vender por outras ofertas fora do lançamento)
 # "oferta" aceita um código ou uma lista (ex: oferta de upsell + oferta de order bump do mesmo produto)
@@ -87,6 +90,8 @@ CPM_BOM          = 40.0    # CPM ≤ 7 → verde | 7-12 → amarelo | >12 → ve
 CPM_MEDIO        = 60.0
 
 # ══════════════════════════════════════════════════════
+def _order_dt(s):
+    return pd.to_datetime(s, errors="coerce") + pd.Timedelta(hours=FUSO_VENDAS_H)
 def sheet_url(t): return f"https://docs.google.com/spreadsheets/d/{SHEET_ID}/gviz/tq?tqx=out:csv&sheet={t}"
 URL_META = sheet_url("meta-ads")
 URL_HOT  = sheet_url("hotmart")
@@ -247,7 +252,7 @@ def load_hotmart():
             print(f"     ⚠ nenhuma venda do produto {PRODUTOS_HOTMART} — confira o nome exato")
 
     # ── Data ──
-    df["date"] = pd.to_datetime(g_on(df,col,"Order Date"), errors="coerce")
+    df["date"] = _order_dt(g_on(df,col,"Order Date"))
     df = df.dropna(subset=["date"])
     df["date"] = df["date"].dt.normalize()
 
@@ -687,7 +692,7 @@ def _jornada_acceso():
         ev["oferta"] = g_on(ev,colA,"Offer Code").astype(str).str.strip().str.lower()
         ev["_sck"]  = g_on(ev,colA,"Tracking Source SCK").astype(str)
         ev["_nome"] = g_on(ev,colA,"Buyer Name").apply(_norm_nome)
-        ev["_date"] = pd.to_datetime(g_on(ev,colA,"Order Date"), errors="coerce")
+        ev["_date"] = _order_dt(g_on(ev,colA,"Order Date"))
         pais_col = next((c for c in ev.columns if _norm_pais(c) in ("pais","country","pais do comprador")), None)
         ev["_ps"] = ev[pais_col].apply(pais_code) if pais_col else ""
         pago_set = {o.lower() for o in OFERTAS_PAGO}
@@ -730,7 +735,7 @@ def load_cert():
     cert = cert[cert["Produto"]==PRODUTO_CERT["nome"]]
     if len(cert)==0:
         print(f"  Cert: nenhuma venda de {PRODUTO_CERT['nome']}"); return None, []
-    cert["date"] = pd.to_datetime(g_on(cert,col,"Order Date"), errors="coerce")
+    cert["date"] = _order_dt(g_on(cert,col,"Order Date"))
     cert = cert.dropna(subset=["date"])
     if CERT_INICIO:
         ini = pd.to_datetime(CERT_INICIO, dayfirst=True)
@@ -804,7 +809,7 @@ def load_upsells():
     col={c.replace("Sales History ","").strip(): c for c in df.columns}
     df=df.copy()
     df["of2"]=g_on(df,col,"Offer Code").astype(str).str.strip().str.lower()
-    df["date"]=pd.to_datetime(g_on(df,col,"Order Date"),errors="coerce")
+    df["date"]=_order_dt(g_on(df,col,"Order Date"))
     df["_sck2"]=g_on(df,col,"Tracking Source SCK").astype(str)
     jorn=_jornada_acceso()
     info=[]; rows=[]
