@@ -49,6 +49,7 @@ PRODUTO_CERT = {"nome":"Longeva - Certificación en Longevidad Femenina","apelid
 # Fuso das vendas: o Stract entrega a Hotmart em Brasília (zone -3). O lançamento é no México
 # (CDMX = UTC-6 fixo, sem horário de verão desde 2022) → desloca -3h para o dia bater com o painel.
 FUSO_VENDAS_H = -3
+ABA_VENDAS_FORA = "Vendas por fora"   # vendas fora da Hotmart, somadas à Certificación
 CERT_INICIO  = "28/10/2026"   # vendas ANTES desta data ficam fora (oferta pkv3h4s7 de outubro não é do lançamento; carrinho abriu 28/10 22:33)
 # Upsells do lançamento — identificados pelo CÓDIGO DE OFERTA (o produto pode vender por outras ofertas fora do lançamento)
 # "oferta" aceita um código ou uma lista (ex: oferta de upsell + oferta de order bump do mesmo produto)
@@ -714,6 +715,36 @@ def _jornada_acceso():
     _JORN_CACHE = {"email":por_email, "nome":por_nome}
     return _JORN_CACHE
 
+# Vendas da Certificación fora da Hotmart (Stripe, Whop, transferência...) — aba preenchida à mão pelo cliente.
+# "Fecha" vem por extenso e sem hora ("28 de Octubre"): já é o dia da venda, sem deslocar fuso.
+_MESES = {"enero":1,"janeiro":1,"febrero":2,"fevereiro":2,"marzo":3,"marco":3,"abril":4,"mayo":5,"maio":5,"junio":6,"junho":6,
+          "julio":7,"julho":7,"agosto":8,"septiembre":9,"setiembre":9,"setembro":9,"octubre":10,"outubro":10,
+          "noviembre":11,"novembro":11,"diciembre":12,"dezembro":12}
+def _data_extenso(t):
+    m = re.match(r"(\d{1,2})\s+de\s+([a-z]+)(?:\s+de\s+(\d{4}))?$", _norm_nome(t))
+    if not m or m.group(2) not in _MESES: return pd.NaT
+    ano = int(m.group(3) or pd.to_datetime(CERT_INICIO, dayfirst=True).year)
+    return pd.Timestamp(ano, _MESES[m.group(2)], int(m.group(1)))
+
+def _vendas_por_fora():
+    """→ DataFrame com date/_email/_nome/of das vendas da aba 'Vendas por fora' ([] de colunas se não houver)."""
+    try: d = pd.read_csv(sheet_url(_up.quote(ABA_VENDAS_FORA)))
+    except Exception as e:
+        print(f"  Cert: aba '{ABA_VENDAS_FORA}' indisponível ({e})"); return pd.DataFrame()
+    col = {_norm_nome(c): c for c in d.columns}
+    # gviz devolve a 1ª aba quando o nome não existe → exige as colunas esperadas
+    if not all(k in col for k in ("nombre","correo","fecha")):
+        print(f"  Cert: aba '{ABA_VENDAS_FORA}' sem as colunas Nombre/Correo/Fecha — ignorada"); return pd.DataFrame()
+    d = d[d[col["correo"]].notna() | d[col["nombre"]].notna()]
+    plat = d[col["plataforma de pago"]].astype(str).str.strip() if "plataforma de pago" in col else pd.Series("",index=d.index)
+    out = pd.DataFrame({"date":d[col["fecha"]].apply(_data_extenso),
+                        "_email":d[col["correo"]].astype(str).str.strip().str.lower(),
+                        "_nome":d[col["nombre"]].apply(_norm_nome),
+                        "of":plat.apply(lambda v: f"por fora · {v}" if v and v!="nan" else "por fora")})
+    ruins = int(out["date"].isna().sum())
+    if ruins: print(f"  ⚠ Cert: {ruins} venda(s) por fora com data inválida ignorada(s): {d.loc[out['date'].isna(),col['fecha']].tolist()}")
+    return out.dropna(subset=["date"])
+
 # ══ PRODUTO PRINCIPAL (Certificación) — atribuição por jornada ══
 def load_cert():
     """Vendas do produto principal. Origem/destino: 1º pela coluna de origem preenchida na aba
@@ -769,6 +800,15 @@ def load_cert():
     # Vendas da Certificación saem de dentro da aula → a origem principal é a da CAPTURA (compra do
     # Taller/Acceso): 1º e-mail, 2º nome (só se único); SCK da própria venda e colunas manuais são fallback.
     cert["_nome"] = g_on(cert,col,"Buyer Name").apply(_norm_nome)
+    fora = _vendas_por_fora()
+    if len(fora):
+        ini = pd.to_datetime(CERT_INICIO, dayfirst=True) if CERT_INICIO else fora["date"].min()
+        fora = fora[fora["date"]>=ini].copy()
+        dup = int(fora["_email"].isin(set(cert["_email"])).sum())
+        print(f"  Cert: + {len(fora)} venda(s) por fora" + (f" · ⚠ {dup} com e-mail que também comprou na Hotmart" if dup else ""))
+        fora["ps"]=""; fora["cod"]=""; fora["o4"]="Não encontrado"
+        if org_col: fora[org_col]=""
+        cert = pd.concat([cert,fora], ignore_index=True)
     rows=[]; n_base=n_jorn=n_nome=n_sem=0; n_pago=n_org=0
     for _,r in cert.iterrows():
         j = jorn["email"].get(r["_email"])
