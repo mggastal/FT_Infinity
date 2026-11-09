@@ -1,0 +1,19 @@
+{
+  "cliente": "Black Friday 26 · Longevidad Femenina",
+  "cor": "#252F26",
+  "letra": "BF",
+  "lancamentos": [
+    "Black 26",
+    "EUA",
+    "MX",
+    "Mix Países"
+  ],
+  "moeda": "USD",
+  "moeda_simbolo": "$",
+  "atualizado": "09/11/2026",
+  "kpis": {
+    "spend": 1056.17,
+    "leads": 958,
+    "cpl": 1.1
+  }
+}
